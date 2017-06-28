@@ -32,13 +32,13 @@ OPTIMIZATION = -O3 #-fvisibility=hidden -flto
 PROFILE = # -pg
 CXXFLAGS = -g -MMD $(OPTIMIZATION) $(PROFILE) -fPIC -std=$(STD) $(WEVERYTHING) $(WARNINGS) -Icc -I$(BUILD)/include -I$(ACMACSD_ROOT)/include $(PKG_INCLUDES)
 LDFLAGS = $(OPTIMIZATION) $(PROFILE)
-LDLIBS = -L$(LIB_DIR) -luWS -lz $$(pkg-config --libs liblzma)
+LDLIBS = -L$(LIB_DIR) -luWS -lssl -lz $$(pkg-config --libs liblzma)
 
 PKG_INCLUDES = $$(pkg-config --cflags liblzma)
 
 ifeq ($(shell uname -s),Darwin)
 PKG_INCLUDES += -I/usr/local/opt/openssl/include $$(pkg-config --cflags libuv)
-LDLIBS += $$(pkg-config --libs libuv)
+LDLIBS += $$(pkg-config --libs libuv) -L/usr/local/opt/openssl/lib
 endif
 
 # ----------------------------------------------------------------------
