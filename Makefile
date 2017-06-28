@@ -49,7 +49,7 @@ CC = cc
 
 all: check-acmacsd-root $(UWS_TEST) $(ACMACS_WEBSERVER)
 
-install: check-acmacsd-root $(ACMACS_WEBSERVER)
+install: check-acmacsd-root $(ACMACS_WEBSERVER) $(UWS_TEST)
 	ln -sf $(ACMACS_WEBSERVER) $(ACMACSD_ROOT)/bin
 
 test: install
