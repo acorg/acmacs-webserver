@@ -8,8 +8,10 @@ MAKEFLAGS = -w
 # ----------------------------------------------------------------------
 
 ACMACS_WEBSERVER = $(DIST)/acmacs-webserver
+UWS_TEST = $(DIST)/uws-test
 
-SOURCES =
+SOURCES = acmacs-webserver.cc
+UWS_TEST_SOURCES = uws-test.cc
 
 # ----------------------------------------------------------------------
 
@@ -30,16 +32,22 @@ OPTIMIZATION = -O3 #-fvisibility=hidden -flto
 PROFILE = # -pg
 CXXFLAGS = -g -MMD $(OPTIMIZATION) $(PROFILE) -fPIC -std=$(STD) $(WEVERYTHING) $(WARNINGS) -Icc -I$(BUILD)/include -I$(ACMACSD_ROOT)/include $(PKG_INCLUDES)
 LDFLAGS = $(OPTIMIZATION) $(PROFILE)
-LDLIBS = -L$(LIB_DIR) $$(pkg-config --libs liblzma)
+LDLIBS = -L$(LIB_DIR) -luWS -lz $$(pkg-config --libs liblzma)
 
 PKG_INCLUDES = $$(pkg-config --cflags liblzma)
+
+ifeq ($(shell uname -s),Darwin)
+PKG_INCLUDES += -I/usr/local/opt/openssl/include $$(pkg-config --cflags libuv)
+LDLIBS += $$(pkg-config --libs libuv)
+endif
 
 # ----------------------------------------------------------------------
 
 BUILD = build
 DIST = $(abspath dist)
+CC = cc
 
-all: check-acmacsd-root $(ACMACS_WEBSERVER)
+all: check-acmacsd-root $(UWS_TEST) $(ACMACS_WEBSERVER)
 
 install: check-acmacsd-root $(ACMACS_WEBSERVER)
 	ln -sf $(ACMACS_WEBSERVER) $(ACMACSD_ROOT)/bin
@@ -56,6 +64,9 @@ test: install
 $(ACMACS_WEBSERVER): $(patsubst %.cc,$(BUILD)/%.o,$(SOURCES)) | $(DIST)
 	g++ $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
+$(UWS_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(UWS_TEST_SOURCES)) | $(DIST)
+	g++ $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
 clean:
 	rm -rf $(DIST) $(BUILD)/*.o $(BUILD)/*.d
 
@@ -64,7 +75,7 @@ distclean: clean
 
 # ----------------------------------------------------------------------
 
-$(BUILD)/%.o: cc/%.cc | $(BUILD) install-headers
+$(BUILD)/%.o: $(CC)/%.cc | $(BUILD)
 	@echo $<
 	@g++ $(CXXFLAGS) -c -o $@ $<
 
