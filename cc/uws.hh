@@ -12,7 +12,7 @@
 #pragma GCC diagnostic ignored "-Wshadow-uncaptured-local"
 #pragma GCC diagnostic ignored "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
-//#pragma GCC diagnostic ignored "-Wundefined-func-template"
+#pragma GCC diagnostic ignored "-Wundefined-func-template"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 #include <uWS/uWS.h>
