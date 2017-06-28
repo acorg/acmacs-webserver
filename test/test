@@ -1,0 +1,27 @@
+#! /bin/bash
+
+TDIR=$(mktemp -d)
+TESTDIR=$(dirname $0)
+
+# ======================================================================
+
+function on_exit
+{
+    rm -rf "$TDIR"
+}
+
+trap on_exit EXIT
+
+function failed
+{
+    echo FAILED >&2
+    exit 1
+}
+
+trap failed ERR
+
+# ======================================================================
+
+export LD_LIBRARY_PATH="$HOME"/AD/lib
+cd "$TESTDIR"
+# ../bin/acmacs-chart-info ./test.ace
