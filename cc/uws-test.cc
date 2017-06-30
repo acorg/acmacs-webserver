@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <cstring>
 #include <sys/stat.h>
+#include <thread>
 
 #include "uws.hh"
 
@@ -206,7 +207,7 @@ void WebSocketDispatcher::message(uWS::WebSocket<uWS::SERVER>* ws, char *message
 
 void WebSocketDispatcher::connection(uWS::WebSocket<uWS::SERVER>* ws, uWS::HttpRequest request)
 {
-    std::cout << "Connection ";
+    std::cout << std::this_thread::get_id() << " Connection ";
     report_request(request);
     ws->send("hello");
 
@@ -232,7 +233,7 @@ void WebSocketDispatcher::disconnection(uWS::WebSocket<uWS::SERVER>* ws, int cod
 
 void WebSocketDispatcher::error(std::conditional<true, int, void *>::type /*user*/)
 {
-    std::cout << "WS FAILURE: Connection failed! Timeout?" << std::endl;
+    std::cout << std::this_thread::get_id() << " WS FAILURE: Connection failed! Timeout?" << std::endl;
 
 } // WebSocketDispatcher::error
 
@@ -248,26 +249,28 @@ int main()
     constexpr const int PORT = 3001, PORT_SSL = 3000;
 
     try {
+        std::cout << "hardware_concurrency: " << std::thread::hardware_concurrency() << std::endl;
         uWS::Hub h;
-        uWS::Group<uWS::SERVER>* sslGroup = h.createGroup<uWS::SERVER>(uWS::PERMESSAGE_DEFLATE);
+
         uWS::Group<uWS::SERVER>* group = h.createGroup<uWS::SERVER>(uWS::PERMESSAGE_DEFLATE);
-
         HttpRequestRedirectToHttps redirect{group, PORT_SSL};
-        HttpRequestDispatcher dispatcher{sslGroup};
-        WebSocketDispatcher ws_dispatcher{sslGroup};
-
-        // h.onMessage([](uWS::WebSocket<uWS::SERVER> *ws, char *message, size_t length, uWS::OpCode opCode) {
-        //         ws->send(message, length, opCode);
-        //     });
-
         if (!h.listen(PORT, nullptr, 0, group))
             throw std::runtime_error("Listening http failed");
 
-          // certChainFileName, keyFileName, keyFilePassword = ""
-        uS::TLS::Context tls_context = uS::TLS::createContext("/Users/eu/Desktop/AcmacsWeb.app/Contents/etc/self-signed.crt", "/Users/eu/Desktop/AcmacsWeb.app/Contents/etc/self-signed.key", "");
-        if (!h.listen(PORT_SSL, tls_context, 0, sslGroup))
-            throw std::runtime_error("Listening https failed");
+        for (auto thread_no = 1 /*std::thread::hardware_concurrency()*/; thread_no > 0; --thread_no) {
+            auto* thread = new std::thread([PORT_SSL]() {
+                    uWS::Hub h;
+                    uWS::Group<uWS::SERVER>* sslGroup = h.createGroup<uWS::SERVER>(uWS::PERMESSAGE_DEFLATE);
+                    HttpRequestDispatcher dispatcher{sslGroup};
+                    WebSocketDispatcher ws_dispatcher{sslGroup};
 
+                      // certChainFileName, keyFileName, keyFilePassword = ""
+                    uS::TLS::Context tls_context = uS::TLS::createContext("/Users/eu/Desktop/AcmacsWeb.app/Contents/etc/self-signed.crt", "/Users/eu/Desktop/AcmacsWeb.app/Contents/etc/self-signed.key", "");
+                    if (!h.listen(PORT_SSL, tls_context, uS::ListenOptions::REUSE_PORT, sslGroup))
+                        throw std::runtime_error("Listening https failed");
+                    h.run();
+                });
+        }
         h.run();
         return 0;
     }
