@@ -8,40 +8,50 @@
 #include "uws.hh"
 
 extern template struct uWS::Group<uWS::SERVER>; // to silence clang
+extern template struct uWS::WebSocket<uWS::SERVER>; // to silence clang
+
+void report_request(uWS::HttpRequest& request);
 
 class HttpRequestDispatcherBase
 {
  public:
-    inline HttpRequestDispatcherBase(uWS::Group<uWS::SERVER>* aGroup) : mGroup(aGroup)
+    inline HttpRequestDispatcherBase(uWS::Group<uWS::SERVER>* aGroup) //: mGroup(aGroup)
         {
             using namespace std::placeholders;
-            mGroup->onHttpRequest(std::bind(&HttpRequestDispatcherBase::dispatcher, this, _1, _2, _3, _4, _5));
+            aGroup->onHttpRequest(std::bind(&HttpRequestDispatcherBase::dispatcher, this, _1, _2, _3, _4, _5));
+            // void onHttpConnection(std::function<void(HttpSocket<isServer> *)> handler);
+            // void onHttpData(std::function<void(HttpResponse *, char *data, size_t length, size_t remainingBytes)> handler);
+            // void onHttpDisconnection(std::function<void(HttpSocket<isServer> *)> handler);
+            // void onCancelledHttpRequest(std::function<void(HttpResponse *)> handler);
+            // void onHttpUpgrade(std::function<void(HttpSocket<isServer> *, HttpRequest)> handler);
         }
     virtual inline ~HttpRequestDispatcherBase() {}
 
  protected:
     virtual void dispatcher(uWS::HttpResponse* response, uWS::HttpRequest request, char* post_data, size_t post_data_length, size_t post_remaining_bytes) = 0;
-    virtual void report_request(uWS::HttpRequest& request);
 
 private:
-    uWS::Group<uWS::SERVER>* mGroup;
+      // uWS::Group<uWS::SERVER>* mGroup;
 };
 
 // ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
 
-class HttpRequestDispatcher : public HttpRequestDispatcherBase
+void report_request(uWS::HttpRequest& request)
 {
- public:
-    using HttpRequestDispatcherBase::HttpRequestDispatcherBase;
+    std::time_t now = std::time(nullptr);
+    std::cout << "Request " << std::asctime(std::localtime(&now)) << std::endl;
+    // std::cout << "URL: " << request.getUrl().toString() << " HOST:" << request.getHeader("host").toString() << std::endl;
+    if (request.headers) {
+        for (auto* h = request.headers; *h; ++h) {
+            std::cout << "  " << std::string(h->key, h->keyLength) << ": " << std::string(h->value, h->valueLength) << std::endl;
+        }
+    }
+    std::cout << std::endl;
 
- protected:
-    virtual void dispatcher(uWS::HttpResponse* response, uWS::HttpRequest request, char* post_data, size_t post_data_length, size_t post_remaining_bytes);
+} // report_headers
 
- private:
-    void get_f(uWS::HttpResponse* response, uWS::HttpRequest request, std::string path);
-    std::string content_type(std::string path) const;
-};
-
+// ----------------------------------------------------------------------
 // ----------------------------------------------------------------------
 
 class HttpRequestRedirectToHttps : public HttpRequestDispatcherBase
@@ -73,6 +83,22 @@ void HttpRequestRedirectToHttps::dispatcher(uWS::HttpResponse* response, uWS::Ht
 } // HttpRequestRedirectToHttps::dispatcher
 
 // ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
+
+class HttpRequestDispatcher : public HttpRequestDispatcherBase
+{
+ public:
+    using HttpRequestDispatcherBase::HttpRequestDispatcherBase;
+
+ protected:
+    virtual void dispatcher(uWS::HttpResponse* response, uWS::HttpRequest request, char* post_data, size_t post_data_length, size_t post_remaining_bytes);
+
+ private:
+    void get_f(uWS::HttpResponse* response, uWS::HttpRequest request, std::string path);
+    std::string content_type(std::string path) const;
+};
+
+// ----------------------------------------------------------------------
 
 void HttpRequestDispatcher::dispatcher(uWS::HttpResponse* response, uWS::HttpRequest request, char* /*post_data*/, size_t /*post_data_length*/, size_t /*post_remaining_bytes*/)
 {
@@ -85,7 +111,8 @@ void HttpRequestDispatcher::dispatcher(uWS::HttpResponse* response, uWS::HttpReq
         get_f(response, request, path.substr(1));
     }
     else {
-        std::string reply = "<html><head><script src=\"/f/myscript.js\"></script></head><body><h1>UWS-TEST</h1><p>XX</p></body></html>";
+        std::time_t now = std::time(nullptr);
+        std::string reply = std::string{"<html><head><script src=\"/f/myscript.js\"></script></head><body><h1>UWS-TEST</h1><p>"} + std::asctime(std::localtime(&now)) + "</p></body></html>";
         response->end(reply.c_str(), reply.size());
     }
 
@@ -139,23 +166,81 @@ std::string HttpRequestDispatcher::content_type(std::string path) const
 } // HttpRequestDispatcher::content_type
 
 // ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
 
-void HttpRequestDispatcherBase::report_request(uWS::HttpRequest& request)
+class WebSocketDispatcher
 {
-    std::time_t now = std::time(nullptr);
-    std::cout << "Request " << std::asctime(std::localtime(&now)) << std::endl;
-    // std::cout << "URL: " << request.getUrl().toString() << " HOST:" << request.getHeader("host").toString() << std::endl;
-    if (request.headers) {
-        for (auto* h = request.headers; *h; ++h) {
-            std::cout << "  " << std::string(h->key, h->keyLength) << ": " << std::string(h->value, h->valueLength) << std::endl;
+ public:
+    inline WebSocketDispatcher(uWS::Group<uWS::SERVER>* aGroup)
+        {
+            using namespace std::placeholders;
+            aGroup->onConnection(std::bind(&WebSocketDispatcher::connection, this, _1, _2));
+            // aGroup->onDisconnection(std::bind(&WebSocketDispatcher::disconnection_client, this, _1, _2, _3, _4));
+            aGroup->onDisconnection(std::bind(&WebSocketDispatcher::disconnection, this, _1, _2, _3, _4));
+            aGroup->onMessage(std::bind(&WebSocketDispatcher::message, this, _1, _2, _3, _4));
+            aGroup->onError(std::bind(&WebSocketDispatcher::error, this, _1));
+              // void onTransfer(std::function<void(WebSocket<isServer> *)> handler);
+              // void onPing(std::function<void(WebSocket<isServer> *, char *, size_t)> handler);
+              // void onPong(std::function<void(WebSocket<isServer> *, char *, size_t)> handler);
         }
-    }
-    std::cout << std::endl;
+    virtual inline ~WebSocketDispatcher() {}
 
-} // HttpRequestDispatcherBase::report_headers
+ protected:
+    virtual void message(uWS::WebSocket<uWS::SERVER> *ws, char *message, size_t length, uWS::OpCode opCode);
+    virtual void connection(uWS::WebSocket<uWS::SERVER> *ws, uWS::HttpRequest request);
+    // virtual void disconnection_client(uWS::WebSocket<uWS::CLIENT> *ws, int code, char *message, size_t length);
+    virtual void disconnection(uWS::WebSocket<uWS::SERVER> *ws, int code, char *message, size_t length);
+    virtual void error(std::conditional<true, int, void *>::type user);
+};
 
 // ----------------------------------------------------------------------
 
+void WebSocketDispatcher::message(uWS::WebSocket<uWS::SERVER>* ws, char *message, size_t length, uWS::OpCode opCode)
+{
+    std::cout << "WS MSG (op: " << opCode << " len:" << length << "): " << std::string{message, length} << std::endl;
+    ws->send(message, length, opCode); // echo
+
+} // WebSocketDispatcher::message
+
+// ----------------------------------------------------------------------
+
+void WebSocketDispatcher::connection(uWS::WebSocket<uWS::SERVER>* ws, uWS::HttpRequest request)
+{
+    std::cout << "Connection ";
+    report_request(request);
+    ws->send("hello");
+
+} // WebSocketDispatcher::connection
+
+// ----------------------------------------------------------------------
+
+// void WebSocketDispatcher::disconnection_client(uWS::WebSocket<uWS::CLIENT>* ws, int code, char* message, size_t length)
+// {
+//     std::cout << "WS client disconnection: " << code << " [" << std::string(message, length) << "]" << std::endl;
+
+// } // WebSocketDispatcher::disconnection_client
+
+// ----------------------------------------------------------------------
+
+void WebSocketDispatcher::disconnection(uWS::WebSocket<uWS::SERVER>* ws, int code, char* message, size_t length)
+{
+    std::cout << "WS server disconnection: " << code << " [" << std::string(message, length) << "]" << std::endl;
+
+} // WebSocketDispatcher::disconnection
+
+// ----------------------------------------------------------------------
+
+void WebSocketDispatcher::error(std::conditional<true, int, void *>::type /*user*/)
+{
+    std::cout << "WS FAILURE: Connection failed! Timeout?" << std::endl;
+
+} // WebSocketDispatcher::error
+
+// ----------------------------------------------------------------------
+
+
+// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
 // ----------------------------------------------------------------------
 
 int main()
@@ -169,15 +254,7 @@ int main()
 
         HttpRequestRedirectToHttps redirect{group, PORT_SSL};
         HttpRequestDispatcher dispatcher{sslGroup};
-
-        // group->onHttpRequest([](uWS::HttpResponse* response, uWS::HttpRequest request, char* /*post_data*/, size_t /*post_data_length*/, size_t /*post_remaining_bytes*/) {
-        //           // redirect to https://<host>:3000
-        //         std::string host = request.getHeader("host").toString();
-        //           // std::cout << "Request HTTP " << host << std::endl;
-        //         host.back() = '0';
-        //         std::string reply = "<html><head><meta http-equiv=\"Refresh\" content=\"0;URL=https://" + host + request.getUrl().toString() + "\" /></head></html>";
-        //         response->end(reply.c_str(), reply.size());
-        //     });
+        WebSocketDispatcher ws_dispatcher{sslGroup};
 
         // h.onMessage([](uWS::WebSocket<uWS::SERVER> *ws, char *message, size_t length, uWS::OpCode opCode) {
         //         ws->send(message, length, opCode);
