@@ -9,28 +9,68 @@
 
 extern template struct uWS::Group<uWS::SERVER>; // to silence clang
 
-class HttpRequestDispatcher
+class HttpRequestDispatcherBase
 {
  public:
-    HttpRequestDispatcher(uWS::Group<uWS::SERVER>* aGroup);
+    inline HttpRequestDispatcherBase(uWS::Group<uWS::SERVER>* aGroup) : mGroup(aGroup)
+        {
+            using namespace std::placeholders;
+            mGroup->onHttpRequest(std::bind(&HttpRequestDispatcherBase::dispatcher, this, _1, _2, _3, _4, _5));
+        }
+    virtual inline ~HttpRequestDispatcherBase() {}
+
+ protected:
+    virtual void dispatcher(uWS::HttpResponse* response, uWS::HttpRequest request, char* post_data, size_t post_data_length, size_t post_remaining_bytes) = 0;
+    virtual void report_request(uWS::HttpRequest& request);
+
+private:
+    uWS::Group<uWS::SERVER>* mGroup;
+};
+
+// ----------------------------------------------------------------------
+
+class HttpRequestDispatcher : public HttpRequestDispatcherBase
+{
+ public:
+    using HttpRequestDispatcherBase::HttpRequestDispatcherBase;
+
+ protected:
+    virtual void dispatcher(uWS::HttpResponse* response, uWS::HttpRequest request, char* post_data, size_t post_data_length, size_t post_remaining_bytes);
 
  private:
-    uWS::Group<uWS::SERVER>* mGroup;
-
-    void dispatcher(uWS::HttpResponse* response, uWS::HttpRequest request, char* post_data, size_t post_data_length, size_t post_remaining_bytes);
-    void report_request(uWS::HttpRequest& request);
     void get_f(uWS::HttpResponse* response, uWS::HttpRequest request, std::string path);
     std::string content_type(std::string path) const;
 };
 
 // ----------------------------------------------------------------------
 
-HttpRequestDispatcher::HttpRequestDispatcher(uWS::Group<uWS::SERVER>* aGroup)
-    : mGroup(aGroup)
+class HttpRequestRedirectToHttps : public HttpRequestDispatcherBase
 {
-    using namespace std::placeholders;
-    mGroup->onHttpRequest(std::bind(&HttpRequestDispatcher::dispatcher, this, _1, _2, _3, _4, _5));
-}
+ public:
+      // target port 0 means do not specify port in the new address
+    inline HttpRequestRedirectToHttps(uWS::Group<uWS::SERVER>* aGroup, int aTargetPort = 0) : HttpRequestDispatcherBase{aGroup}, mTargetPort{aTargetPort} {}
+
+ protected:
+    virtual void dispatcher(uWS::HttpResponse* response, uWS::HttpRequest request, char* post_data, size_t post_data_length, size_t post_remaining_bytes);
+
+ private:
+    int mTargetPort;
+};
+
+// ----------------------------------------------------------------------
+
+void HttpRequestRedirectToHttps::dispatcher(uWS::HttpResponse* response, uWS::HttpRequest request, char* /*post_data*/, size_t /*post_data_length*/, size_t /*post_remaining_bytes*/)
+{
+    // report_request(request);
+    std::string host = request.getHeader("host").toString();
+    host.erase(host.find(':')); // remove original port
+    if (mTargetPort)
+        host += ":" + std::to_string(mTargetPort);
+    const std::string header = "HTTP/1.1 301 Moved Permanently\r\nLocation: https://" + host + request.getUrl().toString() + "\r\n\r\n";
+    response->write(header.c_str(), header.size());
+    response->end();
+
+} // HttpRequestRedirectToHttps::dispatcher
 
 // ----------------------------------------------------------------------
 
@@ -100,7 +140,7 @@ std::string HttpRequestDispatcher::content_type(std::string path) const
 
 // ----------------------------------------------------------------------
 
-void HttpRequestDispatcher::report_request(uWS::HttpRequest& request)
+void HttpRequestDispatcherBase::report_request(uWS::HttpRequest& request)
 {
     std::time_t now = std::time(nullptr);
     std::cout << "Request " << std::asctime(std::localtime(&now)) << std::endl;
@@ -112,7 +152,7 @@ void HttpRequestDispatcher::report_request(uWS::HttpRequest& request)
     }
     std::cout << std::endl;
 
-} // HttpRequestDispatcher::report_headers
+} // HttpRequestDispatcherBase::report_headers
 
 // ----------------------------------------------------------------------
 
@@ -120,35 +160,37 @@ void HttpRequestDispatcher::report_request(uWS::HttpRequest& request)
 
 int main()
 {
+    constexpr const int PORT = 3001, PORT_SSL = 3000;
+
     try {
         uWS::Hub h;
         uWS::Group<uWS::SERVER>* sslGroup = h.createGroup<uWS::SERVER>(uWS::PERMESSAGE_DEFLATE);
         uWS::Group<uWS::SERVER>* group = h.createGroup<uWS::SERVER>(uWS::PERMESSAGE_DEFLATE);
 
-        HttpRequestDispatcher dispatcher(sslGroup);
+        HttpRequestRedirectToHttps redirect{group, PORT_SSL};
+        HttpRequestDispatcher dispatcher{sslGroup};
 
-          // certChainFileName, keyFileName, keyFilePassword = ""
-        uS::TLS::Context tls_context = uS::TLS::createContext("/Users/eu/Desktop/AcmacsWeb.app/Contents/etc/self-signed.crt", "/Users/eu/Desktop/AcmacsWeb.app/Contents/etc/self-signed.key", "");
-
-        group->onHttpRequest([](uWS::HttpResponse* response, uWS::HttpRequest request, char* /*post_data*/, size_t /*post_data_length*/, size_t /*post_remaining_bytes*/) {
-                  // redirect to https://<host>:3000
-                std::string host = request.getHeader("host").toString();
-                  // std::cout << "Request HTTP " << host << std::endl;
-                host.back() = '0';
-                std::string reply = "<html><head><meta http-equiv=\"Refresh\" content=\"0;URL=https://" + host + request.getUrl().toString() + "\" /></head></html>";
-                response->end(reply.c_str(), reply.size());
-            });
+        // group->onHttpRequest([](uWS::HttpResponse* response, uWS::HttpRequest request, char* /*post_data*/, size_t /*post_data_length*/, size_t /*post_remaining_bytes*/) {
+        //           // redirect to https://<host>:3000
+        //         std::string host = request.getHeader("host").toString();
+        //           // std::cout << "Request HTTP " << host << std::endl;
+        //         host.back() = '0';
+        //         std::string reply = "<html><head><meta http-equiv=\"Refresh\" content=\"0;URL=https://" + host + request.getUrl().toString() + "\" /></head></html>";
+        //         response->end(reply.c_str(), reply.size());
+        //     });
 
         // h.onMessage([](uWS::WebSocket<uWS::SERVER> *ws, char *message, size_t length, uWS::OpCode opCode) {
         //         ws->send(message, length, opCode);
         //     });
 
-        if (!h.listen(3001, nullptr, 0, group))
+        if (!h.listen(PORT, nullptr, 0, group))
             throw std::runtime_error("Listening http failed");
-        if (!h.listen(3000, tls_context, 0, sslGroup))
+
+          // certChainFileName, keyFileName, keyFilePassword = ""
+        uS::TLS::Context tls_context = uS::TLS::createContext("/Users/eu/Desktop/AcmacsWeb.app/Contents/etc/self-signed.crt", "/Users/eu/Desktop/AcmacsWeb.app/Contents/etc/self-signed.key", "");
+        if (!h.listen(PORT_SSL, tls_context, 0, sslGroup))
             throw std::runtime_error("Listening https failed");
 
-        std::cout << "Listening" << std::endl;
         h.run();
         return 0;
     }
