@@ -32,7 +32,7 @@ OPTIMIZATION = -O3 #-fvisibility=hidden -flto
 PROFILE = # -pg
 CXXFLAGS = -g -MMD $(OPTIMIZATION) $(PROFILE) -fPIC -std=$(STD) $(WEVERYTHING) $(WARNINGS) -Icc -I$(BUILD)/include -I$(ACMACSD_ROOT)/include $(PKG_INCLUDES)
 LDFLAGS = $(OPTIMIZATION) $(PROFILE)
-LDLIBS = -L$(LIB_DIR) -luWS -lssl -lz $$(pkg-config --libs liblzma)
+LDLIBS = -L$(LIB_DIR) -luWS -lssl -lz -lpthread $$(pkg-config --libs liblzma)
 
 PKG_INCLUDES = $$(pkg-config --cflags liblzma)
 
