@@ -1,6 +1,10 @@
 #pragma once
 
 #pragma GCC diagnostic push
+
+// both gcc and clnag
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 #ifdef __clang__
 //#pragma GCC diagnostic ignored ""
 #pragma GCC diagnostic ignored "-Wcast-align"
@@ -13,7 +17,6 @@
 #pragma GCC diagnostic ignored "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #pragma GCC diagnostic ignored "-Wundefined-func-template"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 #include <uWS/uWS.h>
 #pragma GCC diagnostic pop

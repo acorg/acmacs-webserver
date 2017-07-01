@@ -177,7 +177,7 @@ template <typename Data> class WebSocketQueue : public std::queue<Data>
 {
  public:
     using BaseQueue = std::queue<Data>;
-    inline WebSocketQueue(uWS::Group<uWS::SERVER>* aGroup) : BaseQueue{}, mGroup{aGroup} {}
+    inline WebSocketQueue(uWS::Group<uWS::SERVER>* aGroup) : BaseQueue{}, mGroup{aGroup}, mNotifier{} {}
 
     inline auto& group() { return *mGroup; }
 
