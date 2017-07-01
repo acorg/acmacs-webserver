@@ -9,6 +9,7 @@
 #include <chrono>
 #include <memory>
 #include <vector>
+#include <condition_variable>
 
 #include "uws.hh"
 
@@ -177,7 +178,7 @@ template <typename Data> class WebSocketQueue : public std::queue<Data>
 {
  public:
     using BaseQueue = std::queue<Data>;
-    inline WebSocketQueue(uWS::Group<uWS::SERVER>* aGroup) : BaseQueue{}, mGroup{aGroup}, mNotifier{} {}
+    inline WebSocketQueue(uWS::Group<uWS::SERVER>* aGroup) : BaseQueue{}, mGroup{aGroup} {}
 
     inline auto& group() { return *mGroup; }
 
