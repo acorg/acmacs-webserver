@@ -216,32 +216,40 @@ template <typename Data> class WebSocketHandlers;
 template <typename Data> class WebSocketHandler
 {
  public:
-    inline WebSocketHandler(WebSocketQueue<Data>& aQueue) : mQueue{aQueue}, mThread{new std::thread(std::bind(&WebSocketHandler::run, this))} {}
+    inline WebSocketHandler(WebSocketHandlers<Data>& aHandlers) : mHandlers{aHandlers}, mThread{new std::thread(std::bind(&WebSocketHandler::run, this))} {}
     inline ~WebSocketHandler() { std::cerr << std::this_thread::get_id() << " WebSocketHandler destruct!" << std::endl; /* kill thread? */ }
 
-    inline void connection(Data& aData)
+    inline void connection(Data&& aData)
         {
-            std::cout << std::this_thread::get_id() << " connection" << std::endl;
+            std::cout << std::this_thread::get_id() << " WS:" << aData.ws << " connection" << std::endl;
             aData.send("hello");
         }
 
-    inline void message(Data& aData)
+    inline void disconnection(Data&& aData)
         {
-            std::cout << std::this_thread::get_id() << " WS Message \"" << aData.message << "\"" << std::endl;
+            std::cout << std::this_thread::get_id() << " WS:" << aData.ws << " disconnection" << std::endl;
+              // clean up, find other threads processing tasks for this ws and tell them about disconnection
+            aData.send("why?");
+        }
+
+    inline void message(Data&& aData)
+        {
+            std::cout << std::this_thread::get_id() << " WS:" << aData.ws << " Message \"" << aData.message << "\"" << std::endl;
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(5s);
             aData.send(aData.message); // echo
         }
 
  private:
-    WebSocketQueue<Data>& mQueue;
+    WebSocketHandlers<Data>& mHandlers;
     std::thread* mThread;
 
     [[noreturn]] inline void run()
         {
-            std::cout << std::this_thread::get_id() << " run" << std::endl;
-            using namespace std::chrono_literals;
+              // std::cout << std::this_thread::get_id() << " run" << std::endl;
             while (true) {
-                auto data = mQueue.pop();
-                (this->*data.handler)(data);
+                auto data = mHandlers.pop();
+                (this->*data.handler)(std::move(data));
             }
         }
 };
@@ -269,7 +277,6 @@ template <typename Data> class WebSocketDispatcher
  protected:
     inline void connection(uWS::WebSocket<uWS::SERVER> *ws, uWS::HttpRequest /*request*/)
         {
-            std::cout << std::this_thread::get_id() << " WS Connection, queue size: " << mQueue.size() << std::endl;
             mQueue.push(ws, &WebSocketHandler<Data>::connection);
         }
 
@@ -278,9 +285,9 @@ template <typename Data> class WebSocketDispatcher
             std::cerr << std::this_thread::get_id() << " WS FAILURE: Connection failed! Timeout?" << std::endl;
         }
 
-    inline void disconnection(uWS::WebSocket<uWS::SERVER> *ws, int code, char *message, size_t length)
+    inline void disconnection(uWS::WebSocket<uWS::SERVER> *ws, int /*code*/, char *message, size_t length)
         {
-            std::cout << std::this_thread::get_id() << " WS server disconnection: " << code << " [" << std::string(message, length) << "]" << std::endl;
+            mQueue.push(ws, &WebSocketHandler<Data>::disconnection, {message, length});
         }
 
     inline void message(uWS::WebSocket<uWS::SERVER> *ws, char *message, size_t length, uWS::OpCode /*opCode*/)
@@ -301,7 +308,7 @@ template <typename Data> class WebSocketHandlers
     inline WebSocketHandlers(uWS::Group<uWS::SERVER>* aGroup, size_t aNumberOfThreads = std::thread::hardware_concurrency()) // hardware_concurrency may return 0)
         : mQueue{aGroup}, mDispatcher{mQueue}, mHandlers{aNumberOfThreads > 0 ? aNumberOfThreads : 4}
         {
-            std::transform(mHandlers.begin(), mHandlers.end(), mHandlers.begin(), [this](const auto&) { return std::make_shared<WebSocketHandler<Data>>(this->mQueue); });
+            std::transform(mHandlers.begin(), mHandlers.end(), mHandlers.begin(), [this](const auto&) { return std::make_shared<WebSocketHandler<Data>>(*this); });
         }
 
     inline Data pop() { return mQueue.pop(); }
@@ -319,21 +326,23 @@ template <typename Data> class WebSocketHandlers
 class WebSocketData
 {
  public:
-    using HandlerPtr = void (WebSocketHandler<WebSocketData>::*)(WebSocketData& aData);
+    using HandlerPtr = void (WebSocketHandler<WebSocketData>::*)(WebSocketData&& aData);
 
     // inline WebSocketData(uWS::WebSocket<uWS::SERVER>* aWs, HandlerPtr aHandler) : ws(aWs), handler(aHandler) {}
     inline WebSocketData(uWS::WebSocket<uWS::SERVER>* aWs, HandlerPtr aHandler, std::string aMessage) : ws(aWs), handler(aHandler), message{aMessage} {}
+    inline WebSocketData(const WebSocketData&) = default;
+    inline virtual ~WebSocketData() {}
 
     uWS::WebSocket<uWS::SERVER>* ws;
     HandlerPtr handler;
     std::string message;
 
-    inline void send(std::string aMessage, bool aBinary = false)
+    inline virtual void send(std::string aMessage, bool aBinary = false) const
         {
             ws->send(aMessage.c_str(), aMessage.size(), aBinary ? uWS::BINARY : uWS::TEXT);
         }
 
-    inline void send(const char* aMessage)
+    inline virtual void send(const char* aMessage) const
         {
             ws->send(aMessage, strlen(aMessage), uWS::TEXT);
         }
