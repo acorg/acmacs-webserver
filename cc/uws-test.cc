@@ -184,7 +184,7 @@ template <typename Data> class WebSocketQueue : public std::queue<Data>
 
     inline void push(uWS::WebSocket<uWS::SERVER>* aWs, typename Data::HandlerPtr aHandlerPtr, std::string aMessage = std::string{})
         {
-            std::unique_lock<std::mutex> lock{mMutex};
+            std::unique_lock<std::mutex> lock{mMutexForNotifier};
             BaseQueue::emplace(aWs, aHandlerPtr, aMessage);
             mNotifier.notify_one();
         }
@@ -192,7 +192,7 @@ template <typename Data> class WebSocketQueue : public std::queue<Data>
     inline Data pop()
         {
             while (BaseQueue::empty()) {
-                std::unique_lock<std::mutex> lock{mMutex};
+                std::unique_lock<std::mutex> lock{mMutexForNotifier};
                 mNotifier.wait(lock, [this]() -> bool { return !this->empty(); });
             }
             auto result = BaseQueue::front();
@@ -202,8 +202,8 @@ template <typename Data> class WebSocketQueue : public std::queue<Data>
 
  private:
     uWS::Group<uWS::SERVER>* mGroup;
-    std::mutex mMutex;
     std::condition_variable mNotifier;
+    std::mutex mMutexForNotifier;
 
 }; // WebSocketQueue<Data>
 
@@ -221,20 +221,21 @@ template <typename Data> class WebSocketHandler
 
     inline void connection(Data&& aData)
         {
-            std::cout << std::this_thread::get_id() << " WS:" << aData.ws << " connection" << std::endl;
+            std::cout << std::this_thread::get_id() << " connection" << std::endl;
             aData.send("hello");
         }
 
     inline void disconnection(Data&& aData)
         {
-            std::cout << std::this_thread::get_id() << " WS:" << aData.ws << " disconnection" << std::endl;
+            std::cout << std::this_thread::get_id() << " disconnection" << std::endl;
+            mHandlers.disconnection(aData);
               // clean up, find other threads processing tasks for this ws and tell them about disconnection
-            aData.send("why?");
+            // aData.send("why?");
         }
 
     inline void message(Data&& aData)
         {
-            std::cout << std::this_thread::get_id() << " WS:" << aData.ws << " Message \"" << aData.message << "\"" << std::endl;
+            std::cout << std::this_thread::get_id() << " Message \"" << aData.message << "\"" << std::endl;
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(5s);
             aData.send(aData.message); // echo
@@ -313,6 +314,13 @@ template <typename Data> class WebSocketHandlers
 
     inline Data pop() { return mQueue.pop(); }
 
+    inline void disconnection(const Data& aData)
+        {
+            for (auto& handler: mHandlers) {
+                  //handler->
+            }
+        }
+
  private:
     WebSocketQueue<Data> mQueue;
     WebSocketDispatcher<Data> mDispatcher;
@@ -329,23 +337,32 @@ class WebSocketData
     using HandlerPtr = void (WebSocketHandler<WebSocketData>::*)(WebSocketData&& aData);
 
     // inline WebSocketData(uWS::WebSocket<uWS::SERVER>* aWs, HandlerPtr aHandler) : ws(aWs), handler(aHandler) {}
-    inline WebSocketData(uWS::WebSocket<uWS::SERVER>* aWs, HandlerPtr aHandler, std::string aMessage) : ws(aWs), handler(aHandler), message{aMessage} {}
-    inline WebSocketData(const WebSocketData&) = default;
+    inline WebSocketData(uWS::WebSocket<uWS::SERVER>* aWs, HandlerPtr aHandler, std::string aMessage) : handler(aHandler), message{aMessage}, ws(aWs) {}
+    inline WebSocketData(const WebSocketData& wsd) : handler{wsd.handler}, message{wsd.message}, mMutex{/* cannot copy */}, ws{wsd.ws} {}
     inline virtual ~WebSocketData() {}
 
-    uWS::WebSocket<uWS::SERVER>* ws;
     HandlerPtr handler;
     std::string message;
 
-    inline virtual void send(std::string aMessage, bool aBinary = false) const
+    inline virtual void send(std::string aMessage, bool aBinary = false)
         {
-            ws->send(aMessage.c_str(), aMessage.size(), aBinary ? uWS::BINARY : uWS::TEXT);
+            std::unique_lock<std::mutex> lock{mMutex};
+            if (ws)             // can be set to nullptr to mark it disconnected
+                ws->send(aMessage.c_str(), aMessage.size(), aBinary ? uWS::BINARY : uWS::TEXT);
         }
 
-    inline virtual void send(const char* aMessage) const
+    inline virtual void send(const char* aMessage)
         {
-            ws->send(aMessage, strlen(aMessage), uWS::TEXT);
+            std::unique_lock<std::mutex> lock{mMutex};
+            if (ws)
+                ws->send(aMessage, strlen(aMessage), uWS::TEXT);
         }
+
+    inline auto websocket() { return ws; }
+
+ private:
+    std::mutex mMutex;
+    uWS::WebSocket<uWS::SERVER>* ws;
 
 }; // class WebSocketData
 
