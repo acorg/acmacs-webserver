@@ -19,11 +19,11 @@ CLANG = $(shell if g++ --version 2>&1 | grep -i llvm >/dev/null; then echo Y; el
 ifeq ($(CLANG),Y)
   WEVERYTHING = -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-padded
   WARNINGS = -Wno-weak-vtables # -Wno-padded
-  STD = c++14
+  STD = c++1z
 else
   WEVERYTHING = -Wall -Wextra
   WARNINGS =
-  STD = c++14
+  STD = c++1z
 endif
 
 LIB_DIR = $(ACMACSD_ROOT)/lib

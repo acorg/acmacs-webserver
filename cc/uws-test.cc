@@ -182,10 +182,10 @@ template <typename Data> class WebSocketQueue : public std::queue<Data>
 
     inline auto& group() { return *mGroup; }
 
-    inline void push(uWS::WebSocket<uWS::SERVER>* aWs, typename Data::HandlerPtr aHandlerPtr)
+    inline void push(uWS::WebSocket<uWS::SERVER>* aWs, typename Data::HandlerPtr aHandlerPtr, std::string aMessage = std::string{})
         {
             std::unique_lock<std::mutex> lock{mMutex};
-            BaseQueue::emplace(aWs, aHandlerPtr);
+            BaseQueue::emplace(aWs, aHandlerPtr, aMessage);
             mNotifier.notify_one();
         }
 
@@ -210,53 +210,34 @@ template <typename Data> class WebSocketQueue : public std::queue<Data>
 // ----------------------------------------------------------------------
 // ----------------------------------------------------------------------
 
-class WebSocketHandler;
-
-class WebSocketData
-{
- public:
-    using HandlerPtr = void (WebSocketHandler::*)(WebSocketData& aData);
-
-    inline WebSocketData(uWS::WebSocket<uWS::SERVER>* aWs, HandlerPtr aHandler) : ws(aWs), handler(aHandler) {}
-    uWS::WebSocket<uWS::SERVER>* ws;
-    HandlerPtr handler;
-
-}; // class WebSocketData
-
-// ----------------------------------------------------------------------
-// ----------------------------------------------------------------------
+template <typename Data> class WebSocketHandlers;
 
 // runs in a thread
-class WebSocketHandler
+template <typename Data> class WebSocketHandler
 {
  public:
-    inline ~WebSocketHandler()
-        {
-              // kill thread?
-        }
+    inline WebSocketHandler(WebSocketQueue<Data>& aQueue) : mQueue{aQueue}, mThread{new std::thread(std::bind(&WebSocketHandler::run, this))} {}
+    inline ~WebSocketHandler() { std::cerr << std::this_thread::get_id() << " WebSocketHandler destruct!" << std::endl; /* kill thread? */ }
 
-    static inline WebSocketHandler* new_thread(WebSocketQueue<WebSocketData>& aQueue)
-        {
-            auto* handler = new WebSocketHandler(aQueue);
-            auto* thread = new std::thread(std::bind(&WebSocketHandler::run, handler));
-            handler->mThread = thread;
-            return handler;
-        }
-
-    inline void connection(WebSocketData& aData)
+    inline void connection(Data& aData)
         {
             std::cout << std::this_thread::get_id() << " connection" << std::endl;
-            aData.ws->send("hello");
+            aData.send("hello");
+        }
+
+    inline void message(Data& aData)
+        {
+            std::cout << std::this_thread::get_id() << " WS Message \"" << aData.message << "\"" << std::endl;
+            aData.send(aData.message); // echo
         }
 
  private:
+    WebSocketQueue<Data>& mQueue;
     std::thread* mThread;
-
-    inline WebSocketHandler(WebSocketQueue<WebSocketData>& aQueue) : mQueue(aQueue) {}
-    WebSocketQueue<WebSocketData>& mQueue;
 
     [[noreturn]] inline void run()
         {
+            std::cout << std::this_thread::get_id() << " run" << std::endl;
             using namespace std::chrono_literals;
             while (true) {
                 auto data = mQueue.pop();
@@ -269,10 +250,10 @@ class WebSocketHandler
 // ----------------------------------------------------------------------
 
 // Singletone, runs in the main thread
-class WebSocketDispatcher
+template <typename Data> class WebSocketDispatcher
 {
  public:
-    inline WebSocketDispatcher(WebSocketQueue<WebSocketData>& aQueue) : mQueue(aQueue)
+    inline WebSocketDispatcher(WebSocketQueue<Data>& aQueue) : mQueue(aQueue)
         {
             using namespace std::placeholders;
             auto& group = aQueue.group();
@@ -289,7 +270,7 @@ class WebSocketDispatcher
     inline void connection(uWS::WebSocket<uWS::SERVER> *ws, uWS::HttpRequest /*request*/)
         {
             std::cout << std::this_thread::get_id() << " WS Connection, queue size: " << mQueue.size() << std::endl;
-            mQueue.push(ws, &WebSocketHandler::connection);
+            mQueue.push(ws, &WebSocketHandler<Data>::connection);
         }
 
     inline void error(std::conditional<true, int, void *>::type /*user*/)
@@ -299,28 +280,68 @@ class WebSocketDispatcher
 
     inline void disconnection(uWS::WebSocket<uWS::SERVER> *ws, int code, char *message, size_t length)
         {
-            std::cout << "WS server disconnection: " << code << " [" << std::string(message, length) << "]" << std::endl;
+            std::cout << std::this_thread::get_id() << " WS server disconnection: " << code << " [" << std::string(message, length) << "]" << std::endl;
         }
 
-    inline void message(uWS::WebSocket<uWS::SERVER> *ws, char *message, size_t length, uWS::OpCode opCode)
+    inline void message(uWS::WebSocket<uWS::SERVER> *ws, char *message, size_t length, uWS::OpCode /*opCode*/)
         {
+            mQueue.push(ws, &WebSocketHandler<Data>::message, {message, length});
         }
 
  private:
-    WebSocketQueue<WebSocketData>& mQueue;
+    WebSocketQueue<Data>& mQueue;
 };
 
 // ----------------------------------------------------------------------
 // ----------------------------------------------------------------------
 
-// void WebSocketDispatcher::message(uWS::WebSocket<uWS::SERVER>* ws, char *message, size_t length, uWS::OpCode opCode)
-// {
-//     std::cout << "WS MSG (op: " << opCode << " len:" << length << "): " << std::string{message, length} << std::endl;
-//     ws->send(message, length, opCode); // echo
+template <typename Data> class WebSocketHandlers
+{
+ public:
+    inline WebSocketHandlers(uWS::Group<uWS::SERVER>* aGroup, size_t aNumberOfThreads = std::thread::hardware_concurrency()) // hardware_concurrency may return 0)
+        : mQueue{aGroup}, mDispatcher{mQueue}, mHandlers{aNumberOfThreads > 0 ? aNumberOfThreads : 4}
+        {
+            std::transform(mHandlers.begin(), mHandlers.end(), mHandlers.begin(), [this](const auto&) { return std::make_shared<WebSocketHandler<Data>>(this->mQueue); });
+        }
 
-// } // WebSocketDispatcher::message
+    inline Data pop() { return mQueue.pop(); }
 
-// // ----------------------------------------------------------------------
+ private:
+    WebSocketQueue<Data> mQueue;
+    WebSocketDispatcher<Data> mDispatcher;
+    std::vector<std::shared_ptr<WebSocketHandler<Data>>> mHandlers;
+
+}; // class WebSocketHandlers
+
+// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
+
+class WebSocketData
+{
+ public:
+    using HandlerPtr = void (WebSocketHandler<WebSocketData>::*)(WebSocketData& aData);
+
+    // inline WebSocketData(uWS::WebSocket<uWS::SERVER>* aWs, HandlerPtr aHandler) : ws(aWs), handler(aHandler) {}
+    inline WebSocketData(uWS::WebSocket<uWS::SERVER>* aWs, HandlerPtr aHandler, std::string aMessage) : ws(aWs), handler(aHandler), message{aMessage} {}
+
+    uWS::WebSocket<uWS::SERVER>* ws;
+    HandlerPtr handler;
+    std::string message;
+
+    inline void send(std::string aMessage, bool aBinary = false)
+        {
+            ws->send(aMessage.c_str(), aMessage.size(), aBinary ? uWS::BINARY : uWS::TEXT);
+        }
+
+    inline void send(const char* aMessage)
+        {
+            ws->send(aMessage, strlen(aMessage), uWS::TEXT);
+        }
+
+}; // class WebSocketData
+
+// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
 
 // // void WebSocketDispatcher::disconnection_client(uWS::WebSocket<uWS::CLIENT>* ws, int code, char* message, size_t length)
 // // {
@@ -371,11 +392,7 @@ int main()
         if (!hub.listen(PORT_SSL, tls_context, uS::ListenOptions::REUSE_PORT, sslGroup))
             throw std::runtime_error("Listening https failed");
         HttpRequestDispatcher dispatcher{sslGroup};
-
-        WebSocketQueue<WebSocketData> queue{sslGroup};
-        WebSocketDispatcher ws_dispatcher{queue};
-        std::vector<std::shared_ptr<WebSocketHandler>> handlers{3 /*std::thread::hardware_concurrency()*/, nullptr};
-        std::transform(handlers.begin(), handlers.end(), handlers.begin(), [&queue](const auto&) { return std::shared_ptr<WebSocketHandler>(WebSocketHandler::new_thread(queue)); });
+        WebSocketHandlers<WebSocketData> handlers{sslGroup, 3 /* std::thread::hardware_concurrency() */};
 
         hub.run();
         return 0;
