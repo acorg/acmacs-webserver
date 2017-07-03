@@ -108,7 +108,7 @@ namespace _websocket_dispatcher_internal
 template <typename Data> class WebSocketDispatcher
 {
  public:
-    inline WebSocketDispatcher(uWS::Group<uWS::SERVER>* aGroup) : mQueue{aGroup} //, mHandlers{aHandlers}
+    inline WebSocketDispatcher(uWS::Group<uWS::SERVER>* aGroup, size_t aNumberOfThreads = std::thread::hardware_concurrency()) : mQueue{aGroup} //, mHandlers{aHandlers}
         {
             using namespace std::placeholders;
             aGroup->onConnection(std::bind(&WebSocketDispatcher::connection, this, _1, _2));

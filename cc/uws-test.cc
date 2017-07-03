@@ -290,7 +290,7 @@ int main()
             throw std::runtime_error("Listening https failed");
         HttpRequestDispatcher http_dispatcher{sslGroup};
         // WebSocketHandlers<WebSocketData> handlers{sslGroup, 3 /* std::thread::hardware_concurrency() */};
-        WebSocketDispatcher<WebSocketData> ws_dispatcher{sslGroup};
+        WebSocketDispatcher<WebSocketData> ws_dispatcher{sslGroup, 3 /* std::thread::hardware_concurrency() */};
 
         hub.run();
         return 0;
