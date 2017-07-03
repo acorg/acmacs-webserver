@@ -1,14 +1,10 @@
-#include <string>
-#include <iostream>
-#include <cerrno>
-#include <cstring>
-#include <sys/stat.h>
-#include <thread>
-#include <queue>
+// #include <string>
+// #include <iostream>
+// #include <cerrno>
+// #include <cstring>
+// #include <sys/stat.h>
+
 #include <chrono>
-#include <memory>
-#include <vector>
-#include <condition_variable>
 
 #include "http-request-dispatcher.hh"
 #include "websocket-dispatcher.hh"
@@ -19,73 +15,73 @@
 // ----------------------------------------------------------------------
 // ----------------------------------------------------------------------
 
-template <typename Data> class WebSocketHandlers;
+// template <typename Data> class WebSocketHandlers;
 
-// runs in a thread
-template <typename Data> class WebSocketHandler
-{
- private:
-    class DataAssigner
-    {
-     public:
-        inline DataAssigner(Data&& aData, Data& aHandlerData) : mHandlerData(aHandlerData) { mHandlerData = std::move(aData); }
-        inline ~DataAssigner() { mHandlerData.reset(); }
-     private:
-        Data& mHandlerData;
-    };
+// // runs in a thread
+// template <typename Data> class WebSocketHandler
+// {
+//  private:
+//     class DataAssigner
+//     {
+//      public:
+//         inline DataAssigner(Data&& aData, Data& aHandlerData) : mHandlerData(aHandlerData) { mHandlerData = std::move(aData); }
+//         inline ~DataAssigner() { mHandlerData.reset(); }
+//      private:
+//         Data& mHandlerData;
+//     };
 
- public:
-    inline WebSocketHandler(WebSocketHandlers<Data>& aHandlers) : mHandlers{aHandlers}, mThread{new std::thread(std::bind(&WebSocketHandler::run, this))} {}
-    inline ~WebSocketHandler() { std::cerr << std::this_thread::get_id() << " WebSocketHandler destruct!" << std::endl; /* kill thread? */ }
+//  public:
+//     inline WebSocketHandler(WebSocketHandlers<Data>& aHandlers) : mHandlers{aHandlers}, mThread{new std::thread(std::bind(&WebSocketHandler::run, this))} {}
+//     inline ~WebSocketHandler() { std::cerr << std::this_thread::get_id() << " WebSocketHandler destruct!" << std::endl; /* kill thread? */ }
 
-    inline void connection(Data&& aData)
-        {
-            DataAssigner assigner{std::move(aData), mData};
-            std::cout << std::this_thread::get_id() << " " << mData.websocket() << " connection" << std::endl;
-            send("hello");
-        }
+//     inline void connection(Data&& aData)
+//         {
+//             DataAssigner assigner{std::move(aData), mData};
+//             std::cout << std::this_thread::get_id() << " " << mData.websocket() << " connection" << std::endl;
+//             send("hello");
+//         }
 
-    inline void disconnection(Data&& aData)
-        {
-            std::cout << std::this_thread::get_id() << " " << mData.websocket() << " disconnection" << std::endl;
-            aData.invalidate_websocket(); // aData.ws is invalid pointer! ws is already closed and most probably destroyed
-            DataAssigner assigner{std::move(aData), mData};
-        }
+//     inline void disconnection(Data&& aData)
+//         {
+//             std::cout << std::this_thread::get_id() << " " << mData.websocket() << " disconnection" << std::endl;
+//             aData.invalidate_websocket(); // aData.ws is invalid pointer! ws is already closed and most probably destroyed
+//             DataAssigner assigner{std::move(aData), mData};
+//         }
 
-    inline void message(Data&& aData)
-        {
-            DataAssigner assigner{std::move(aData), mData};
-            std::cout << std::this_thread::get_id() << " " << mData.websocket() << " Message \"" << mData.received_message() << "\"" << std::endl;
-            using namespace std::chrono_literals;
-            std::this_thread::sleep_for(5s);
-            send(mData.received_message()); // echo
-        }
+//     inline void message(Data&& aData)
+//         {
+//             DataAssigner assigner{std::move(aData), mData};
+//             std::cout << std::this_thread::get_id() << " " << mData.websocket() << " Message \"" << mData.received_message() << "\"" << std::endl;
+//             using namespace std::chrono_literals;
+//             std::this_thread::sleep_for(5s);
+//             send(mData.received_message()); // echo
+//         }
 
-    inline void websocket_disconnected(uWS::WebSocket<uWS::SERVER>* ws) { mData.websocket_disconnected(ws); }
+//     inline void websocket_disconnected(uWS::WebSocket<uWS::SERVER>* ws) { mData.websocket_disconnected(ws); }
 
- private:
-    WebSocketHandlers<Data>& mHandlers;
-    std::thread* mThread;
-    Data mData;
+//  private:
+//     WebSocketHandlers<Data>& mHandlers;
+//     std::thread* mThread;
+//     Data mData;
 
-    [[noreturn]] inline void run()
-        {
-              // std::cout << std::this_thread::get_id() << " run" << std::endl;
-            while (true) {
-                mHandlers.pop().call_handler(*this); // pop() blocks waiting for the message from queue
-            }
-        }
+//     [[noreturn]] inline void run()
+//         {
+//               // std::cout << std::this_thread::get_id() << " run" << std::endl;
+//             while (true) {
+//                 mHandlers.pop().call_handler(*this); // pop() blocks waiting for the message from queue
+//             }
+//         }
 
-    inline void move_data(Data&& aData)
-        {
-            std::unique_lock<std::mutex> lock{mData.mMutex};
-            mData = std::move(aData);
-        }
+//     inline void move_data(Data&& aData)
+//         {
+//             std::unique_lock<std::mutex> lock{mData.mMutex};
+//             mData = std::move(aData);
+//         }
 
-    inline void send(std::string aMessage, bool aBinary = false) { mData.send(aMessage, aBinary); }
-    inline void send(const char* aMessage) { mData.send(aMessage); }
+//     inline void send(std::string aMessage, bool aBinary = false) { mData.send(aMessage, aBinary); }
+//     inline void send(const char* aMessage) { mData.send(aMessage); }
 
-}; // WebSocketHandler
+// }; // WebSocketHandler
 
 // ----------------------------------------------------------------------
 // ----------------------------------------------------------------------
@@ -265,6 +261,25 @@ class WebSocketData : public WebSocketDataBase
  public:
     inline WebSocketData(uWS::WebSocket<uWS::SERVER>* aWs) : WebSocketDataBase(aWs) {}
     inline WebSocketData(const WebSocketData& wsd) : WebSocketDataBase(wsd) {}
+
+    virtual inline void connection()
+        {
+            std::cout << std::this_thread::get_id() << " " << socket_id() << " connection" << std::endl;
+            send("hello");
+        }
+
+    virtual inline void disconnection(std::string aMessage)
+        {
+            std::cout << std::this_thread::get_id() << " " << socket_id() << " disconnection \"" << aMessage << "\"" << std::endl;
+        }
+
+    virtual inline void message(std::string aMessage)
+        {
+            std::cout << std::this_thread::get_id() << " " << socket_id() << " Message \"" << aMessage << "\"" << std::endl;
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(5s);
+            send(aMessage); // echo
+        }
 
 }; // class WebSocketData
 // ----------------------------------------------------------------------

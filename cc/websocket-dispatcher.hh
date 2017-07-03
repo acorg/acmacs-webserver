@@ -1,21 +1,34 @@
 #pragma once
 
 #include <iostream>
+#include <thread>
+#include <condition_variable>
+#include <memory>
+#include <queue>
+#include <vector>
 
 #include "uws.hh"
 
 // ----------------------------------------------------------------------
 
+template <typename Data> class WebSocketDispatcher;
+
+// ----------------------------------------------------------------------
+
 namespace _websocket_dispatcher_internal
 {
+    template <typename Data> class WebSocketWorker;
+    template <typename Data> using HandlerPtr = void (WebSocketWorker<Data>::*)(Data& aData, std::string aMessage);
+
     template <typename Data> class QueueData
     {
      public:
-          // template <typename ... Args> inline QueueData(std::string aMessage, Args ... aArgs) : data{aArgs ...}, message{aMessage} {}
-        inline QueueData(Data& aData, /* HandlerPtr aHandlerPtr, */ std::string aMessage) : data{aData}, /* mHandlerPtr{aHandlerPtr}, */ message{aMessage} {}
+        inline QueueData(Data& aData, HandlerPtr<Data> aHandlerPtr, std::string aMessage) : data{aData}, mHandlerPtr{aHandlerPtr}, message{aMessage} {}
         Data& data;
-          // HandlerPtr mHandlerPtr;
+        HandlerPtr<Data> mHandlerPtr;
         std::string message;
+
+        inline void call(WebSocketWorker<Data>& aWorker) { (aWorker.*mHandlerPtr)(data, message); }
 
     }; // class QueueData<>
 
@@ -33,9 +46,9 @@ namespace _websocket_dispatcher_internal
 
         inline auto& group() { return *mGroup; }
 
-        inline void push(Data& aData, /* typename Data::HandlerPtr aHandlerPtr, */ std::string aMessage = std::string{})
+        inline void push(Data& aData, HandlerPtr<Data> aHandlerPtr, std::string aMessage = std::string{})
             {
-                Base::emplace(aData, /* aHandlerPtr, */ aMessage);
+                Base::emplace(aData, aHandlerPtr, aMessage);
                 std::cerr << std::this_thread::get_id() << " Q.push " << Base::size() << " " << aData << std::endl;
                 data_available();
             }
@@ -85,9 +98,11 @@ namespace _websocket_dispatcher_internal
                 auto found = std::find_if(Base::begin(), Base::end(), [&aWs](const auto& data) { return aWs == data.mWs; });
                 if (found == Base::end()) {
                     Base::emplace_back(aWs);
-                    found = Base::rbegin().base();
+                    return Base::back();
                 }
-                return *found;
+                else {
+                    return *found;
+                }
             }
 
         inline void remove(const Data& aData)
@@ -101,6 +116,58 @@ namespace _websocket_dispatcher_internal
 
     }; // class DataSet<Data>
 
+// ----------------------------------------------------------------------
+
+    template <typename Data> class WebSocketWorker
+    {
+     public:
+        inline WebSocketWorker(WebSocketDispatcher<Data>& aDispatcher) : mDispatcher{aDispatcher}, mThread{new std::thread(std::bind(&WebSocketWorker::run, this))}
+            {
+            }
+
+          // inline ~WebSocketWorker() { std::cerr << std::this_thread::get_id() << " WebSocketWorker destruct!" << std::endl; /* kill thread? */ }
+
+        inline void connection(Data& aData, std::string)
+            {
+                aData.connection();
+            }
+
+        inline void disconnection(Data& aData, std::string aMessage)
+            {
+                aData.disconnection(aMessage);
+            }
+
+        inline void message(Data& aData, std::string aMessage)
+            {
+                aData.message(aMessage);
+            }
+
+     private:
+        WebSocketDispatcher<Data>& mDispatcher;
+        std::thread* mThread;
+
+        [[noreturn]] void run();
+
+    }; // WebSocketWorker<Data>
+
+// ----------------------------------------------------------------------
+
+    template <typename Data> using WebSocketWorkersBase = std::vector<std::shared_ptr<WebSocketWorker<Data>>>;
+
+    template <typename Data> class WebSocketWorkers : public WebSocketWorkersBase<Data>
+    {
+     private:
+        using Base = WebSocketWorkersBase<Data>;
+
+     public:
+        inline WebSocketWorkers(WebSocketDispatcher<Data>& aDispatcher, size_t aNumberOfThreads)
+            : Base{aNumberOfThreads > 0 ? aNumberOfThreads : 4}
+            {
+                std::transform(this->begin(), this->end(), this->begin(), [&aDispatcher](const auto&) { return std::make_shared<WebSocketWorker<Data>>(aDispatcher); });
+            }
+
+    }; // WebSocketWorkers<Worker>
+
 } // namespace _websocket_dispatcher_internal
 
 // ----------------------------------------------------------------------
@@ -108,7 +175,7 @@ namespace _websocket_dispatcher_internal
 template <typename Data> class WebSocketDispatcher
 {
  public:
-    inline WebSocketDispatcher(uWS::Group<uWS::SERVER>* aGroup, size_t aNumberOfThreads = std::thread::hardware_concurrency()) : mQueue{aGroup} //, mHandlers{aHandlers}
+    inline WebSocketDispatcher(uWS::Group<uWS::SERVER>* aGroup, size_t aNumberOfThreads = std::thread::hardware_concurrency()) : mQueue{aGroup}, mWorkers{*this, aNumberOfThreads}
         {
             using namespace std::placeholders;
             aGroup->onConnection(std::bind(&WebSocketDispatcher::connection, this, _1, _2));
@@ -124,7 +191,7 @@ template <typename Data> class WebSocketDispatcher
     inline void connection(uWS::WebSocket<uWS::SERVER>* ws, uWS::HttpRequest /*request*/)
         {
             std::cout << std::this_thread::get_id() << " WS " << ws << " dispatcher connection, pre queue: " << mQueue.size() << std::endl;
-            mQueue.push(mDataSet.find(ws) /* , &WebSocketHandler<Data>::connection */);
+            mQueue.push(mDataSet.find(ws), &_websocket_dispatcher_internal::WebSocketWorker<Data>::connection);
             std::cout << std::this_thread::get_id() << " WS " << ws << " dispatcher connection, queue: " << mQueue.size() << std::endl;
         }
 
@@ -139,19 +206,40 @@ template <typename Data> class WebSocketDispatcher
               // immeditely tell about disconnection, ws will be destroyed upon returning from this function!
             data.websocket_disconnected();
             std::cout << std::this_thread::get_id() << " WS " << ws << " dispatcher disconnection, pre queue: " << mQueue.size() << std::endl;
-            mQueue.push(data, /*&WebSocketHandler<Data>::disconnection,*/ {message, length});
+            mQueue.push(data, &_websocket_dispatcher_internal::WebSocketWorker<Data>::disconnection, {message, length});
         }
 
     inline void message(uWS::WebSocket<uWS::SERVER>* ws, char* message, size_t length, uWS::OpCode /*opCode*/)
         {
-            mQueue.push(mDataSet.find(ws), /* &WebSocketHandler<Data>::message, */ {message, length});
+            mQueue.push(mDataSet.find(ws), &_websocket_dispatcher_internal::WebSocketWorker<Data>::message, {message, length});
         }
 
  private:
     _websocket_dispatcher_internal::WebSocketQueue<Data> mQueue;
     _websocket_dispatcher_internal::DataSet<Data> mDataSet;
+    _websocket_dispatcher_internal::WebSocketWorkers<Data> mWorkers;
+
+      // runs in the thread
+    inline void pop_call(_websocket_dispatcher_internal::WebSocketWorker<Data>& worker)
+        {
+            auto data = mQueue.pop(); // blocks on waiting for a data in the queue
+            data.call(worker);
+        }
+
+    friend class _websocket_dispatcher_internal::WebSocketWorker<Data>;
 
 }; // class WebSocketDispatcher<Data>
+
+// ----------------------------------------------------------------------
+
+template <typename Data> [[noreturn]] inline void _websocket_dispatcher_internal::WebSocketWorker<Data>::run()
+{
+      // std::cout << std::this_thread::get_id() << " run" << std::endl;
+    while (true) {
+        mDispatcher.pop_call(*this); // pop() blocks waiting for the message from queue
+    }
+
+} // _websocket_dispatcher_internal::WebSocketWorker::run
 
 // ----------------------------------------------------------------------
 
@@ -164,8 +252,32 @@ class WebSocketDataBase
     inline virtual ~WebSocketDataBase() {}
       // inline void operator=(WebSocketDataBase&& aData) { std::unique_lock<std::mutex> lock{mMutex}; mWs = aData.mWs; }
 
+      // The functions below are called in a thread to process event received via websocket.
+      // They are must be re-entrant, to access data fields in this they MUST use std::unique_lock<std::mutex> lock{mMutex}!!!
+    virtual void connection() = 0;
+    virtual void disconnection(std::string aMessage) = 0; // mWs is null when this is called
+    virtual void message(std::string aMessage) = 0;
+
+ protected:
+    mutable std::mutex mMutex;
+
+    inline void send(std::string aMessage, bool aBinary = false)
+        {
+            std::unique_lock<std::mutex> lock{mMutex};
+            if (mWs)             // can be set to nullptr to mark it disconnected
+                mWs->send(aMessage.c_str(), aMessage.size(), aBinary ? uWS::BINARY : uWS::TEXT);
+        }
+
+    inline void send(const char* aMessage)
+        {
+            std::unique_lock<std::mutex> lock{mMutex};
+            if (mWs)
+                mWs->send(aMessage, strlen(aMessage), uWS::TEXT);
+        }
+
+    inline const void* socket_id() const { std::unique_lock<std::mutex> lock{mMutex}; return reinterpret_cast<void*>(mWs); }
+
  private:
-    std::mutex mMutex;
     uWS::WebSocket<uWS::SERVER>* mWs;
 
     inline void websocket_disconnected() { std::unique_lock<std::mutex> lock{mMutex}; mWs = nullptr; }
@@ -176,7 +288,6 @@ class WebSocketDataBase
     friend inline std::ostream& operator<<(std::ostream& out, const WebSocketDataBase& wsd) { return out << "WS:" << wsd.mWs << std::endl; }
 
 }; // class WebSocketDataBase
-
 
 // ----------------------------------------------------------------------
 /// Local Variables:
