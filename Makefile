@@ -10,8 +10,8 @@ MAKEFLAGS = -w
 ACMACS_WEBSERVER = $(DIST)/acmacs-webserver
 UWS_TEST = $(DIST)/uws-test
 
-SOURCES = acmacs-webserver.cc
-UWS_TEST_SOURCES = uws-test.cc
+SOURCES = acmacs-webserver.cc http-request-dispatcher.cc
+UWS_TEST_SOURCES = uws-test.cc http-request-dispatcher.cc
 
 # ----------------------------------------------------------------------
 

@@ -22,6 +22,12 @@
 #pragma GCC diagnostic pop
 
 // ----------------------------------------------------------------------
+
+ // to silence clang
+extern template struct uWS::Group<uWS::SERVER>;
+extern template struct uWS::WebSocket<uWS::SERVER>;
+
+// ----------------------------------------------------------------------
 /// Local Variables:
 /// eval: (if (fboundp 'eu-rename-buffer) (eu-rename-buffer))
 /// End:
