@@ -37,13 +37,13 @@
 //     inline void connection(Data&& aData)
 //         {
 //             DataAssigner assigner{std::move(aData), mData};
-//             std::cout << std::this_thread::get_id() << " " << mData.websocket() << " connection" << std::endl;
+//             std::cerr << std::this_thread::get_id() << " " << mData.websocket() << " connection" << std::endl;
 //             send("hello");
 //         }
 
 //     inline void disconnection(Data&& aData)
 //         {
-//             std::cout << std::this_thread::get_id() << " " << mData.websocket() << " disconnection" << std::endl;
+//             std::cerr << std::this_thread::get_id() << " " << mData.websocket() << " disconnection" << std::endl;
 //             aData.invalidate_websocket(); // aData.ws is invalid pointer! ws is already closed and most probably destroyed
 //             DataAssigner assigner{std::move(aData), mData};
 //         }
@@ -51,7 +51,7 @@
 //     inline void message(Data&& aData)
 //         {
 //             DataAssigner assigner{std::move(aData), mData};
-//             std::cout << std::this_thread::get_id() << " " << mData.websocket() << " Message \"" << mData.received_message() << "\"" << std::endl;
+//             std::cerr << std::this_thread::get_id() << " " << mData.websocket() << " Message \"" << mData.received_message() << "\"" << std::endl;
 //             using namespace std::chrono_literals;
 //             std::this_thread::sleep_for(5s);
 //             send(mData.received_message()); // echo
@@ -66,7 +66,7 @@
 
 //     [[noreturn]] inline void run()
 //         {
-//               // std::cout << std::this_thread::get_id() << " run" << std::endl;
+//               // std::cerr << std::this_thread::get_id() << " run" << std::endl;
 //             while (true) {
 //                 mHandlers.pop().call_handler(*this); // pop() blocks waiting for the message from queue
 //             }
@@ -108,9 +108,9 @@
 //  protected:
 //     inline void connection(uWS::WebSocket<uWS::SERVER>* ws, uWS::HttpRequest /*request*/)
 //         {
-//             std::cout << std::this_thread::get_id() << " WS " << ws << " dispatcher connection, pre queue: " << mQueue.size() << std::endl;
+//             std::cerr << std::this_thread::get_id() << " WS " << ws << " dispatcher connection, pre queue: " << mQueue.size() << std::endl;
 //             mQueue.push(ws, &WebSocketHandler<Data>::connection);
-//             std::cout << std::this_thread::get_id() << " WS " << ws << " dispatcher connection, queue: " << mQueue.size() << std::endl;
+//             std::cerr << std::this_thread::get_id() << " WS " << ws << " dispatcher connection, queue: " << mQueue.size() << std::endl;
 //         }
 
 //     inline void error(std::conditional<true, int, void *>::type /*user*/)
@@ -122,7 +122,7 @@
 //         {
 //               // immeditely tell handlers about disconnection, ws will be destroyed upon returning from this function!
 //             mHandlers.disconnection(ws);
-//             std::cout << std::this_thread::get_id() << " WS " << ws << " dispatcher disconnection, pre queue: " << mQueue.size() << std::endl;
+//             std::cerr << std::this_thread::get_id() << " WS " << ws << " dispatcher disconnection, pre queue: " << mQueue.size() << std::endl;
 //             mQueue.push(ws, &WebSocketHandler<Data>::disconnection, {message, length});
 //         }
 
@@ -229,7 +229,7 @@
 
 // // void WebSocketDispatcher::disconnection_client(uWS::WebSocket<uWS::CLIENT>* ws, int code, char* message, size_t length)
 // // {
-// //     std::cout << "WS client disconnection: " << code << " [" << std::string(message, length) << "]" << std::endl;
+// //     std::cerr << "WS client disconnection: " << code << " [" << std::string(message, length) << "]" << std::endl;
 
 // // } // WebSocketDispatcher::disconnection_client
 
@@ -237,7 +237,7 @@
 
 // void WebSocketDispatcher::disconnection(uWS::WebSocket<uWS::SERVER>* ws, int code, char* message, size_t length)
 // {
-//     std::cout << "WS server disconnection: " << code << " [" << std::string(message, length) << "]" << std::endl;
+//     std::cerr << "WS server disconnection: " << code << " [" << std::string(message, length) << "]" << std::endl;
 
 // } // WebSocketDispatcher::disconnection
 
@@ -245,7 +245,7 @@
 
 // void WebSocketDispatcher::error(std::conditional<true, int, void *>::type /*user*/)
 // {
-//     std::cout << std::this_thread::get_id() << " WS FAILURE: Connection failed! Timeout?" << std::endl;
+//     std::cerr << std::this_thread::get_id() << " WS FAILURE: Connection failed! Timeout?" << std::endl;
 
 // } // WebSocketDispatcher::error
 
@@ -260,24 +260,29 @@ class WebSocketData : public WebSocketDataBase
 {
  public:
     inline WebSocketData(uWS::WebSocket<uWS::SERVER>* aWs) : WebSocketDataBase(aWs) {}
-    inline WebSocketData(const WebSocketData& wsd) : WebSocketDataBase(wsd) {}
+
+    virtual inline ~WebSocketData()
+        {
+            std::cerr << std::this_thread::get_id() << " " << data_id() << " DESTRUCTOR" << std::endl;
+        }
 
     virtual inline void connection()
         {
-            std::cout << std::this_thread::get_id() << " " << socket_id() << " connection" << std::endl;
+            std::cerr << std::this_thread::get_id() << " " << data_id() << " connection" << std::endl;
             send("hello");
         }
 
     virtual inline void disconnection(std::string aMessage)
         {
-            std::cout << std::this_thread::get_id() << " " << socket_id() << " disconnection \"" << aMessage << "\"" << std::endl;
+            std::cerr << std::this_thread::get_id() << " " << data_id() << " disconnection \"" << aMessage << "\"" << std::endl;
         }
 
     virtual inline void message(std::string aMessage)
         {
-            std::cout << std::this_thread::get_id() << " " << socket_id() << " Message \"" << aMessage << "\"" << std::endl;
+            std::cerr << std::this_thread::get_id() << " " << data_id() << " Message \"" << aMessage << "\"" << std::endl;
             using namespace std::chrono_literals;
-            std::this_thread::sleep_for(5s);
+            std::this_thread::sleep_for(2s);
+            std::cerr << std::this_thread::get_id() << " " << data_id() << " Message processed, replying" << std::endl;
             send(aMessage); // echo
         }
 
@@ -289,8 +294,8 @@ int main()
     constexpr const int PORT = 3001, PORT_SSL = 3000;
 
     try {
-          // std::cout << "hardware_concurrency: " << std::thread::hardware_concurrency() << std::endl;
-        std::cout << std::this_thread::get_id() << " main thread" << std::endl;
+          // std::cerr << "hardware_concurrency: " << std::thread::hardware_concurrency() << std::endl;
+        std::cerr << std::this_thread::get_id() << " main thread" << std::endl;
 
         uWS::Hub hub;
 
