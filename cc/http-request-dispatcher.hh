@@ -1,7 +1,9 @@
 #pragma once
 
-#include <functional>
 #include <iostream>
+#include <functional>
+#include <memory>
+#include <vector>
 #include <ctime>
 
 #include "uws.hh"
@@ -46,17 +48,35 @@ class HttpRequestRedirectToHttps : public HttpRequestDispatcherBase
 
 // ----------------------------------------------------------------------
 
+class HttpApplication
+{
+ public:
+    virtual inline ~HttpApplication() {}
+
+    virtual bool handle(uWS::HttpResponse& response, uWS::HttpRequest& request, const char* post_data, size_t post_data_length, size_t post_remaining_bytes) = 0;
+
+};
+
+// ----------------------------------------------------------------------
+
 class HttpRequestDispatcher : public HttpRequestDispatcherBase
 {
  public:
     using HttpRequestDispatcherBase::HttpRequestDispatcherBase;
 
+    inline void add(std::shared_ptr<HttpApplication> aApp) { mApps.push_back(aApp); }
+
  protected:
     virtual void dispatcher(uWS::HttpResponse* response, uWS::HttpRequest request, char* post_data, size_t post_data_length, size_t post_remaining_bytes);
 
  private:
-    void get_f(uWS::HttpResponse* response, uWS::HttpRequest request, std::string path);
-    std::string content_type(std::string path) const;
+    std::vector<std::shared_ptr<HttpApplication>> mApps;
+
+    void reply_404(uWS::HttpResponse& response);
+    void log(uWS::HttpRequest& request);
+
+    // void get_f(uWS::HttpResponse* response, uWS::HttpRequest request, std::string path);
+    // std::string content_type(std::string path) const;
 
 }; // class HttpRequestDispatcher
 
