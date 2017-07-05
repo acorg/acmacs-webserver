@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <chrono>
 #include <ctime>
 
@@ -55,6 +56,7 @@ enum tls_mode {
 void on_message(server* s, websocketpp::connection_hdl hdl, message_ptr msg);
 void on_http(server* s, websocketpp::connection_hdl hdl);
 context_ptr on_tls_init(tls_mode mode, websocketpp::connection_hdl hdl);
+void reply_404(server::connection_ptr con, std::string location);
 
 void on_message(server* s, websocketpp::connection_hdl hdl, message_ptr msg)
 {
@@ -73,25 +75,59 @@ void on_message(server* s, websocketpp::connection_hdl hdl, message_ptr msg)
 void on_http(server* s, websocketpp::connection_hdl hdl)
 {
     server::connection_ptr con = s->get_con_from_hdl(hdl);
+    const std::string location = con->get_resource();
 
+    if (location == "/f/myscript.js") {
+        std::string filename{location, 1};
+        std::ifstream file{filename.c_str()};
+        if (!file) {
+            file.open((filename + ".gz").c_str());
+            if (file)
+                con->append_header("Content-Encoding", "gzip");
+        }
+        if (file) {
+            std::string reply;
+            file.seekg(0, std::ios::end);
+            reply.reserve(static_cast<size_t>(file.tellg()));
+            file.seekg(0, std::ios::beg);
+            reply.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+            con->set_body(reply);
+            con->set_status(websocketpp::http::status_code::ok);
+        }
+        else {
+            reply_404(con, location);
+        }
+    }
+    else if (location == "/") {
+        std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::string reply = std::string{"<html><head><script src=\"/f/myscript.js\"></script></head><body><h1>UWS-TEST</h1><p>"} + std::asctime(std::localtime(&now)) + "</p></body></html>";
+        con->set_body(reply);
+        con->set_status(websocketpp::http::status_code::ok);
+    }
+    else {
+        // s->get_alog().write(websocketpp::log::alevel::app, "Error 404: not found: " + location);
+        reply_404(con, location);
+    }
       // ~/AD/sources/websocketpp/websocketpp/connection.hpp
       //   // POST
       // std::string res = con->get_request_body();
       // std::cout << "got HTTP request with " << res.size() << " bytes of body data." << std::endl;
-    std::cout << "http secure: " << con->get_secure() << std::endl;
-    std::cout << "http host: \"" << con->get_host() << '"' << std::endl;
-    std::cout << "http port: " << con->get_port() << std::endl;
-    std::cout << "http resource: \"" << con->get_resource() << '"' << std::endl; // location in URL
+    // std::cout << "http secure: " << con->get_secure() << std::endl;
+    // std::cout << "http host: \"" << con->get_host() << '"' << std::endl;
+    // std::cout << "http port: " << con->get_port() << std::endl;
+    // std::cout << "http resource: \"" << con->get_resource() << '"' << std::endl; // location in URL
       // std::cout << "http header: \"" << con->get_request_header("???") << '"' << std::endl;
     // std::cout << "http origin: \"" << con->get_origin() << '"' << std::endl; // SEG FAULT
-
-    std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    std::string reply = std::string{"<html><head><script src=\"/f/myscript.js\"></script></head><body><h1>UWS-TEST</h1><p>"} + std::asctime(std::localtime(&now)) + "</p></body></html>";
-    con->set_body(reply);
-    con->set_status(websocketpp::http::status_code::ok);
 }
 
-context_ptr on_tls_init(tls_mode mode, websocketpp::connection_hdl hdl)
+void reply_404(server::connection_ptr con, std::string location)
+{
+    std::string reply = "<!doctype html><html><head><title>Error 404 (Resource not found)</title><body><h1>Error 404</h1><p>The requested URL " + location + " was not found on this server.</p></body></head></html>";
+    con->set_body(reply);
+    con->set_status(websocketpp::http::status_code::not_found);
+}
+
+context_ptr on_tls_init(tls_mode mode, websocketpp::connection_hdl /*hdl*/)
 {
     namespace asio = websocketpp::lib::asio;
 
