@@ -7,11 +7,6 @@ MAKEFLAGS = -w
 
 # ----------------------------------------------------------------------
 
-ACMACS_WEBSERVER = $(DIST)/acmacs-webserver
-UWS_TEST = $(DIST)/uws-test
-
-SOURCES = acmacs-webserver.cc http-request-dispatcher.cc
-UWS_TEST_SOURCES = uws-test.cc http-request-dispatcher.cc
 
 # ----------------------------------------------------------------------
 
@@ -47,10 +42,10 @@ BUILD = build
 DIST = $(abspath dist)
 CC = cc
 
-all: check-acmacsd-root $(UWS_TEST) $(ACMACS_WEBSERVER)
+all: check-acmacsd-root
 
-install: check-acmacsd-root $(ACMACS_WEBSERVER) $(UWS_TEST)
-	ln -sf $(ACMACS_WEBSERVER) $(ACMACSD_ROOT)/bin
+install: check-acmacsd-root
+	#ln -sf $(ACMACS_WEBSERVER) $(ACMACSD_ROOT)/bin
 
 test: install
 	test/test
@@ -60,12 +55,6 @@ test: install
 -include $(BUILD)/*.d
 
 # ----------------------------------------------------------------------
-
-$(ACMACS_WEBSERVER): $(patsubst %.cc,$(BUILD)/%.o,$(SOURCES)) | $(DIST)
-	g++ $(LDFLAGS) -o $@ $^ $(LDLIBS)
-
-$(UWS_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(UWS_TEST_SOURCES)) | $(DIST)
-	g++ $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 clean:
 	rm -rf $(DIST) $(BUILD)/*.o $(BUILD)/*.d
@@ -93,6 +82,21 @@ $(BUILD):
 	mkdir -p $(BUILD)
 
 .PHONY: check-acmacsd-root
+
+# ----------------------------------------------------------------------
+# UWS: uWebSocket based
+
+# UWS_ACMACS_WEBSERVER = $(DIST)/uws-acmacs-webserver
+# UWS_TEST = $(DIST)/uws-test
+
+# UWS_SOURCES = uws/acmacs-webserver.cc http-request-dispatcher.cc
+# UWS_TEST_SOURCES = uws/uws-test.cc uws/http-request-dispatcher.cc
+
+# $(UWS_ACMACS_WEBSERVER): $(patsubst %.cc,$(BUILD)/%.o,$(SOURCES)) | $(DIST)
+#	g++ $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+# $(UWS_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(UWS_TEST_SOURCES)) | $(DIST)
+#	g++ $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 # ======================================================================
 ### Local Variables:
