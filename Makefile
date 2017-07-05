@@ -7,6 +7,10 @@ MAKEFLAGS = -w
 
 # ----------------------------------------------------------------------
 
+WSPP_TEST = $(DIST)/wspp-test
+
+WSPP_TEST_SOURCES = wspp-test.cc
+WSPP_LDLIBS = -L$(LIB_DIR) $$(pkg-config --libs libcrypto) -lssl -lboost_system
 
 # ----------------------------------------------------------------------
 
@@ -27,13 +31,14 @@ OPTIMIZATION = -O3 #-fvisibility=hidden -flto
 PROFILE = # -pg
 CXXFLAGS = -g -MMD $(OPTIMIZATION) $(PROFILE) -fPIC -std=$(STD) $(WEVERYTHING) $(WARNINGS) -Icc -I$(BUILD)/include -I$(ACMACSD_ROOT)/include $(PKG_INCLUDES)
 LDFLAGS = $(OPTIMIZATION) $(PROFILE)
-LDLIBS = -L$(LIB_DIR) -luWS -lssl -lz -lpthread $$(pkg-config --libs liblzma)
+LDLIBS = -L$(LIB_DIR) -lpthread $$(pkg-config --libs liblzma)
 
-PKG_INCLUDES = $$(pkg-config --cflags liblzma)
+PKG_INCLUDES = $$(pkg-config --cflags liblzma) $$(pkg-config --cflags libcrypto)
 
 ifeq ($(shell uname -s),Darwin)
-PKG_INCLUDES += -I/usr/local/opt/openssl/include $$(pkg-config --cflags libuv)
-LDLIBS += $$(pkg-config --libs libuv) -L/usr/local/opt/openssl/lib
+PKG_INCLUDES += -I/usr/local/opt/openssl/include
+# $$(pkg-config --cflags libuv)
+LDLIBS += -L/usr/local/opt/openssl/lib
 endif
 
 # ----------------------------------------------------------------------
@@ -42,9 +47,9 @@ BUILD = build
 DIST = $(abspath dist)
 CC = cc
 
-all: check-acmacsd-root
+all: check-acmacsd-root $(WSPP_TEST)
 
-install: check-acmacsd-root
+install: check-acmacsd-root $(WSPP_TEST)
 	#ln -sf $(ACMACS_WEBSERVER) $(ACMACSD_ROOT)/bin
 
 test: install
@@ -53,6 +58,11 @@ test: install
 # ----------------------------------------------------------------------
 
 -include $(BUILD)/*.d
+
+# ----------------------------------------------------------------------
+
+$(WSPP_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
+	g++ $(LDFLAGS) -o $@ $^ $(WSPP_LDLIBS) $(LDLIBS)
 
 # ----------------------------------------------------------------------
 
@@ -91,12 +101,13 @@ $(BUILD):
 
 # UWS_SOURCES = uws/acmacs-webserver.cc http-request-dispatcher.cc
 # UWS_TEST_SOURCES = uws/uws-test.cc uws/http-request-dispatcher.cc
+# UWS_LDLIBS = -luWS $$(pkg-config --libs libuv) -lssl -lz
 
 # $(UWS_ACMACS_WEBSERVER): $(patsubst %.cc,$(BUILD)/%.o,$(SOURCES)) | $(DIST)
-#	g++ $(LDFLAGS) -o $@ $^ $(LDLIBS)
+#	g++ $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
 
 # $(UWS_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(UWS_TEST_SOURCES)) | $(DIST)
-#	g++ $(LDFLAGS) -o $@ $^ $(LDLIBS)
+#	g++ $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
 
 # ======================================================================
 ### Local Variables:

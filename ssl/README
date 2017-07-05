@@ -1,0 +1,2 @@
+# takes 64s
+openssl dhparam -out dh.pem 2048
