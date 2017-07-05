@@ -10,7 +10,7 @@ MAKEFLAGS = -w
 WSPP_TEST = $(DIST)/wspp-test
 
 WSPP_TEST_SOURCES = wspp-test.cc
-WSPP_LDLIBS = -L$(LIB_DIR) $$(pkg-config --libs libcrypto) -lssl -lboost_system
+WSPP_LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $$(pkg-config --libs libssl) -lboost_system
 
 # ----------------------------------------------------------------------
 
@@ -38,7 +38,6 @@ PKG_INCLUDES = $$(pkg-config --cflags liblzma) $$(pkg-config --cflags libcrypto)
 ifeq ($(shell uname -s),Darwin)
 PKG_INCLUDES += -I/usr/local/opt/openssl/include
 # $$(pkg-config --cflags libuv)
-LDLIBS += -L/usr/local/opt/openssl/lib
 endif
 
 # ----------------------------------------------------------------------
