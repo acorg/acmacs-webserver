@@ -54,9 +54,16 @@ enum tls_mode {
 };
 
 void on_message(server* s, websocketpp::connection_hdl hdl, message_ptr msg);
+void on_open(server* s, websocketpp::connection_hdl hdl);
 void on_http(server* s, websocketpp::connection_hdl hdl);
 context_ptr on_tls_init(tls_mode mode, websocketpp::connection_hdl hdl);
 void reply_404(server::connection_ptr con, std::string location);
+
+void on_open(server* s, websocketpp::connection_hdl hdl)
+{
+    std::cout << "web socket connection opened" << std::endl;
+    s->send(hdl, "hello", websocketpp::frame::opcode::text); // websocketpp::frame::opcode::binary
+}
 
 void on_message(server* s, websocketpp::connection_hdl hdl, message_ptr msg)
 {
@@ -183,6 +190,7 @@ int main()
     echo_server.init_asio();
 
     echo_server.set_message_handler(bind(&on_message, &echo_server, _1, _2));
+    echo_server.set_open_handler(bind(&on_open, &echo_server, _1));
     echo_server.set_http_handler(bind(&on_http, &echo_server, _1));
     echo_server.set_tls_init_handler(bind(&on_tls_init, MOZILLA_INTERMEDIATE, _1)); // all browsers on macOS want TLSv1 -> MOZILLA_INTERMEDIATE
 
