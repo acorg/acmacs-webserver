@@ -3,9 +3,24 @@
 #include <chrono>
 #include <ctime>
 
-#include "wspp.hh"
+#include "wspp-http.hh"
+
+// #include "wspp.hh"
 
 // ----------------------------------------------------------------------
+
+int main()
+{
+    WsppHttp http{"localhost", "3000"};
+    http.run();
+    return 0;
+}
+
+// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
+
+#if 0
 
 using server = websocketpp::server<websocketpp::config::asio_tls>;
 
@@ -161,7 +176,7 @@ int main()
     echo_server.set_http_handler(bind(&on_http, &echo_server, _1));
     echo_server.set_tls_init_handler(bind(&on_tls_init, MOZILLA_INTERMEDIATE, _1)); // all browsers on macOS want TLSv1 -> MOZILLA_INTERMEDIATE
 
-    echo_server.listen(3000);
+    echo_server.listen("localhost", "3000");
     echo_server.start_accept();
     echo_server.run();
 
@@ -171,7 +186,6 @@ int main()
 
 // ----------------------------------------------------------------------
 
-#if 0
     void on_http(connection_hdl hdl) {
         // Upgrade our connection handle to a full connection_ptr
         server::connection_ptr con = m_endpoint.get_con_from_hdl(hdl);

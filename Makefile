@@ -9,7 +9,7 @@ MAKEFLAGS = -w
 
 WSPP_TEST = $(DIST)/wspp-test
 
-WSPP_TEST_SOURCES = wspp-test.cc
+WSPP_TEST_SOURCES = wspp-test.cc wspp-http.cc
 WSPP_LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $$(pkg-config --libs libssl) -lboost_system
 
 # ----------------------------------------------------------------------
