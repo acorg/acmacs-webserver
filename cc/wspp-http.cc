@@ -55,6 +55,14 @@ bool WsppHttpLocationHandlerFile::handle(std::string aLocation, WsppHttpResponse
 
 // ----------------------------------------------------------------------
 
+void WsppWebsocketLocationHandler::send(websocketpp::connection_hdl hdl, std::string aMessage, websocketpp::frame::opcode::value op_code)
+{
+    mServer->send(hdl, aMessage, op_code);
+
+} // WsppWebsocketLocationHandler::send
+
+// ----------------------------------------------------------------------
+
 WsppHttp::WsppHttp(std::string aHost, std::string aPort)
     : certificate_chain_file{"ssl/self-signed.crt"},
       private_key_file{"ssl/self-signed.key"},
@@ -65,12 +73,12 @@ WsppHttp::WsppHttp(std::string aHost, std::string aPort)
 
     using websocketpp::lib::bind;
     using websocketpp::lib::placeholders::_1;
-    using websocketpp::lib::placeholders::_2;
+    // using websocketpp::lib::placeholders::_2;
 
     mServer->set_tls_init_handler(bind(&on_tls_init, this, _1));
-    mServer->set_http_handler(bind(&WsppHttp::on_http, this, mServer, _1));
+    mServer->set_http_handler(bind(&WsppHttp::on_http, this, _1));
+    mServer->set_open_handler(bind(&WsppHttp::on_open, this, _1));
     // mServer->set_message_handler(bind(&on_message, &echo_server, _1, _2));
-    // mServer->set_open_handler(bind(&on_open, &echo_server, _1));
 
     mServer->listen(aHost, aPort);
 
@@ -88,7 +96,7 @@ WsppHttp::~WsppHttp()
 
 void WsppHttp::run()
 {
-    add_http_location_handler(std::make_shared<WsppHttpLocationHandler404>());
+    add_location_handler(std::make_shared<WsppHttpLocationHandler404>());
     mServer->start_accept();
     mServer->run();
 
@@ -96,13 +104,74 @@ void WsppHttp::run()
 
 // ----------------------------------------------------------------------
 
-void WsppHttp::on_http(server* s, websocketpp::connection_hdl hdl)
+void WsppHttp::setup_logging(std::string access_log_filename, std::string error_log_filename)
 {
-    server::connection_ptr con = s->get_con_from_hdl(hdl);
+    using namespace websocketpp::log;
+    auto& alog = mServer->get_alog();
+    if (!access_log_filename.empty()) {
+        auto* fs = new std::ofstream{access_log_filename, std::ios_base::out | std::ios_base::app};
+        if (fs && *fs)
+            alog.set_ostream(fs);
+        else
+            delete fs;
+    }
+
+     // remove all logging, then enable individual channels
+
+    alog.clear_channels(alevel::all);
+    alog.set_channels(alevel::none // ~/AD/include/websocketpp/logger/levels.hpp
+                      | alevel::connect
+                      | alevel::disconnect
+                        // | alevel::control
+                        // | alevel::frame_header
+                        // | alevel::frame_payload
+                        // | alevel::message_header // Reserved
+                        // | alevel::message_payload // Reserved
+                        // | alevel::endpoint // Reserved
+                        // | alevel::debug_handshake
+                        // | alevel::debug_close
+                        // | alevel::devel
+                      | alevel::app // Special channel for application specific logs. Not used by the library.
+                      | alevel::http // Access related to HTTP requests
+                      | alevel::fail
+                      ); // alevel::connect | alevel::disconnect);
+
+    auto& elog = mServer->get_elog();
+    if (!error_log_filename.empty()) {
+        auto* fs = new std::ofstream{error_log_filename, std::ios_base::out | std::ios_base::app};
+        if (fs && *fs)
+            elog.set_ostream(fs);
+        else
+            delete fs;
+    }
+    elog.clear_channels(alevel::all);
+    elog.set_channels(alevel::none // ~/AD/include/websocketpp/logger/levels.hpp
+                      | alevel::connect
+                      | alevel::disconnect
+                      | alevel::control
+                      | alevel::frame_header
+                      | alevel::frame_payload
+                      | alevel::message_header
+                      | alevel::message_payload
+                      | alevel::endpoint
+                      | alevel::debug_handshake
+                      | alevel::debug_close
+                      | alevel::devel
+                      | alevel::app
+                      | alevel::http // Access related to HTTP requests
+                      | alevel::fail
+                      ); // alevel::connect | alevel::disconnect);
+
+} // WsppHttp::setup_logging
+
+// ----------------------------------------------------------------------
+
+void WsppHttp::on_http(websocketpp::connection_hdl hdl)
+{
+    server::connection_ptr con = mServer->get_con_from_hdl(hdl);
     const std::string location = con->get_resource();
 
     WsppHttpResponseData response;
-    std::cerr << "Handlers: " << mHttpLocationHandlers.size() << std::endl;
     for (auto handler: mHttpLocationHandlers) {
         if (handler->handle(location, response))
             break;
@@ -112,39 +181,6 @@ void WsppHttp::on_http(server* s, websocketpp::connection_hdl hdl)
     con->set_body(response.body);
     con->set_status(response.status);
 
-    // if (location == "/f/myscript.js") {
-    //     std::string filename{location, 1};
-    //     std::ifstream file{filename.c_str()};
-    //     if (!file) {
-    //         file.open((filename + ".gz").c_str());
-    //         if (file)
-    //             con->append_header("Content-Encoding", "gzip");
-    //     }
-    //     if (file) {
-    //         std::string reply;
-    //         file.seekg(0, std::ios::end);
-    //         reply.reserve(static_cast<size_t>(file.tellg()));
-    //         file.seekg(0, std::ios::beg);
-    //         reply.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    //         con->set_body(reply);
-    //         con->set_status(websocketpp::http::status_code::ok);
-    //     }
-    //     else {
-    //         reply_404(con, location);
-    //     }
-    // }
-    // else if (location == "/") {
-    //     std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    //     std::string reply = std::string{"<html><head><script src=\"/f/myscript.js\"></script></head><body><h1>UWS-TEST</h1><p>"} + std::asctime(std::localtime(&now)) + "</p></body></html>";
-    //     con->set_body(reply);
-    //     con->set_status(websocketpp::http::status_code::ok);
-    // }
-    // else {
-    //     // s->get_alog().write(websocketpp::log::alevel::app, "Error 404: not found: " + location);
-    //     reply_404(con, location);
-    // }
-
-      // ~/AD/sources/websocketpp/websocketpp/connection.hpp
       //   // POST
       // std::string res = con->get_request_body();
       // std::cout << "got HTTP request with " << res.size() << " bytes of body data." << std::endl;
@@ -209,8 +245,29 @@ context_ptr on_tls_init(WsppHttp* wspp_http, websocketpp::connection_hdl /*hdl*/
 
 // ----------------------------------------------------------------------
 
-void WsppHttp::on_open(server* s, websocketpp::connection_hdl hdl)
+void WsppHttp::on_open(websocketpp::connection_hdl hdl)
 {
+    using websocketpp::lib::bind;
+    using websocketpp::lib::placeholders::_1;
+    using websocketpp::lib::placeholders::_2;
+
+    server::connection_ptr connection = mServer->get_con_from_hdl(hdl);
+    const std::string location = connection->get_resource();
+
+    std::cerr << "WS OPEN: \"" << location << '"' << std::endl;
+
+    for (auto handler: mWebsocketLocationHandlers) {
+        if (handler->use(location)) {
+            if (handler->mServer == nullptr)
+                handler->mServer = mServer;
+            else if (handler->mServer != mServer)
+                throw std::runtime_error("Cannot use WebsocketLocationHandler with multiple servers");
+            handler->on_open(hdl);
+            connection->set_message_handler(bind(&WsppWebsocketLocationHandler::on_message, handler, _1, _2));
+            connection->set_close_handler(bind(&WsppWebsocketLocationHandler::on_close, handler, _1));
+            break;
+        }
+    }
 
 } // WsppHttp::on_open
 

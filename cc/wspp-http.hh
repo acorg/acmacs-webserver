@@ -5,14 +5,19 @@
 #pragma GCC diagnostic push
 #include "acmacs-base/boost-diagnostics.hh"
 #include "websocketpp/http/constants.hpp"
+#ifdef __clang__
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wmissing-noreturn"
+#endif
+#include "websocketpp/config/asio.hpp"
 #pragma GCC diagnostic pop
 
 // ----------------------------------------------------------------------
 
 namespace websocketpp {
-    namespace config {
-        struct asio_tls;
-    }
+    // namespace config {
+    //     struct asio_tls;
+    // }
     namespace lib {
         using std::weak_ptr;
     }
@@ -67,6 +72,32 @@ class WsppHttpLocationHandlerFile : public WsppHttpLocationHandler
 
 // ----------------------------------------------------------------------
 
+class WsppWebsocketLocationHandler
+{
+ public:
+    inline WsppWebsocketLocationHandler() : mServer {nullptr} {}
+    virtual inline ~WsppWebsocketLocationHandler() {}
+
+ protected:
+      // returns true if this handler is going to handle ws for the passed location
+    virtual bool use(std::string aLocation) = 0;
+
+    virtual void on_open(websocketpp::connection_hdl hdl) = 0;
+    virtual void on_close(websocketpp::connection_hdl /*hdl*/) {}
+    virtual void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg) = 0;
+
+    void send(websocketpp::connection_hdl hdl, std::string aMessage, websocketpp::frame::opcode::value op_code = websocketpp::frame::opcode::text);
+
+ private:
+    using server = websocketpp::server<websocketpp::config::asio_tls>;
+    server* mServer;
+
+    friend class WsppHttp;
+
+}; // class WsppHttpLocationHandler
+
+// ----------------------------------------------------------------------
+
 class WsppHttp
 {
  public:
@@ -75,7 +106,9 @@ class WsppHttp
     WsppHttp(std::string aHost, std::string aPort);
     ~WsppHttp();
 
-    inline void add_http_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
+    inline void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
+    inline void add_location_handler(std::shared_ptr<WsppWebsocketLocationHandler> aHandler) { mWebsocketLocationHandlers.push_back(aHandler); }
+    void setup_logging(std::string access_log_filename = std::string{}, std::string error_log_filename = std::string{});
 
     void run();
 
@@ -87,9 +120,10 @@ class WsppHttp
  private:
     server* mServer;
     std::vector<std::shared_ptr<WsppHttpLocationHandler>> mHttpLocationHandlers;
+    std::vector<std::shared_ptr<WsppWebsocketLocationHandler>> mWebsocketLocationHandlers;
 
-    void on_http(server* s, websocketpp::connection_hdl hdl);
-    void on_open(server* s, websocketpp::connection_hdl hdl);
+    void on_http(websocketpp::connection_hdl hdl);
+    void on_open(websocketpp::connection_hdl hdl);
 };
 
 // ----------------------------------------------------------------------

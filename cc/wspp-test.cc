@@ -5,8 +5,6 @@
 
 #include "wspp-http.hh"
 
-// #include "wspp.hh"
-
 // ----------------------------------------------------------------------
 
 class RootPage : public WsppHttpLocationHandler
@@ -24,16 +22,41 @@ class RootPage : public WsppHttpLocationHandler
             return handled;
         }
 
-}; // class WsppHttpLocationHandler404
+}; // class RootPage
+
+// ----------------------------------------------------------------------
+
+class MyWS : public WsppWebsocketLocationHandler
+{
+ protected:
+    virtual inline bool use(std::string aLocation)
+        {
+            return aLocation == "/myws";
+        }
+
+    virtual inline void on_open(websocketpp::connection_hdl hdl)
+        {
+            send(hdl, "hello");
+        }
+
+    virtual inline void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg)
+        {
+            std::cerr << "MSG (op-code: " << msg->get_opcode() << "): \"" << msg->get_payload() << '"' << std::endl;
+            send(hdl, "MyWS first", websocketpp::frame::opcode::binary);
+        }
+
+}; // class MyWS
 
 // ----------------------------------------------------------------------
 
 int main()
 {
     WsppHttp http{"localhost", "3000"};
-    http.add_http_location_handler(std::make_shared<RootPage>());
-    http.add_http_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/f/myscript.js", std::vector<std::string>{"f/myscript.js", "f/myscript.js.gz"}));
-    http.add_http_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/favicon.ico", std::vector<std::string>{"favicon.ico"}));
+    http.setup_logging("/tmp/wspp.access.log", "/tmp/wspp.error.log");
+    http.add_location_handler(std::make_shared<RootPage>());
+    http.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/f/myscript.js", std::vector<std::string>{"f/myscript.js", "f/myscript.js.gz"}));
+    http.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/favicon.ico", std::vector<std::string>{"favicon.ico"}));
+    http.add_location_handler(std::make_shared<MyWS>());
 
     http.run();
     return 0;
