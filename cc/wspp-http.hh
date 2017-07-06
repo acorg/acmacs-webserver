@@ -51,6 +51,20 @@ class WsppHttpLocationHandler404 : public WsppHttpLocationHandler
 
 }; // class WsppHttpLocationHandler404
 
+class WsppHttpLocationHandlerFile : public WsppHttpLocationHandler
+{
+ public:
+    inline WsppHttpLocationHandlerFile(std::string aLocation, const std::vector<std::string>& aFiles)
+        : mLocation{aLocation}, mFiles{aFiles} {}
+
+    virtual bool handle(std::string aLocation, WsppHttpResponseData& aResponse);
+
+ private:
+    std::string mLocation;
+    std::vector<std::string> mFiles;
+
+}; // class WsppHttpLocationHandler404
+
 // ----------------------------------------------------------------------
 
 class WsppHttp

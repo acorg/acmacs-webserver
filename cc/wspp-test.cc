@@ -12,6 +12,8 @@
 int main()
 {
     WsppHttp http{"localhost", "3000"};
+    http.add_http_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/f/myscript.js", std::vector<std::string>{"f/myscript.js", "f/myscript.js.gz"}));
+
     http.run();
     return 0;
 }

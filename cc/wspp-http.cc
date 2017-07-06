@@ -32,6 +32,30 @@ bool WsppHttpLocationHandler404::handle(std::string aLocation, WsppHttpResponseD
 
 // ----------------------------------------------------------------------
 
+bool WsppHttpLocationHandlerFile::handle(std::string aLocation, WsppHttpResponseData& aResponse)
+{
+    bool handled = false;
+    if (aLocation == mLocation) {
+        for (const auto& filename: mFiles) {
+            std::ifstream file{filename.c_str()};
+            if (file) {
+                file.seekg(0, std::ios::end);
+                aResponse.body.reserve(static_cast<size_t>(file.tellg()));
+                file.seekg(0, std::ios::beg);
+                aResponse.body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                if (filename.substr(filename.size() - 3) == ".gz")
+                    aResponse.append_header("Content-Encoding", "gzip");
+                handled = true;
+                break;
+            }
+        }
+    }
+    return handled;
+
+} // WsppHttpLocationHandlerFile::handle
+
+// ----------------------------------------------------------------------
+
 WsppHttp::WsppHttp(std::string aHost, std::string aPort)
     : certificate_chain_file{"ssl/self-signed.crt"},
       private_key_file{"ssl/self-signed.key"},
