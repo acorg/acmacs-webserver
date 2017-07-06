@@ -23,8 +23,7 @@ static context_ptr on_tls_init(WsppHttp* wspp_http, websocketpp::connection_hdl 
 
 bool WsppHttpLocationHandler404::handle(std::string aLocation, WsppHttpResponseData& aResponse)
 {
-    std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    aResponse.body = std::string{"<html><head><script src=\"/f/myscript.js\"></script></head><body><h1>UWS-TEST</h1><p>"} + std::asctime(std::localtime(&now)) + "</p></body></html>";
+    aResponse.body = "<!doctype html><html><head><title>Error 404 (Resource not found)</title><body><h1>Error 404</h1><p>The requested URL " + aLocation + " was not found on this server.</p></body></head></html>";
     aResponse.status = websocketpp::http::status_code::not_found;
     return true;
 

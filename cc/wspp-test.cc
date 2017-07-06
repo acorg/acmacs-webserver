@@ -9,10 +9,31 @@
 
 // ----------------------------------------------------------------------
 
+class RootPage : public WsppHttpLocationHandler
+{
+ public:
+    virtual inline bool handle(std::string aLocation, WsppHttpResponseData& aResponse)
+        {
+
+            bool handled = false;
+            if (aLocation == "/") {
+                std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                aResponse.body = std::string{"<html><head><script src=\"/f/myscript.js\"></script></head><body><h1>WSPP-TEST RootPage</h1><p>"} + std::asctime(std::localtime(&now)) + "</p></body></html>";
+                handled = true;
+            }
+            return handled;
+        }
+
+}; // class WsppHttpLocationHandler404
+
+// ----------------------------------------------------------------------
+
 int main()
 {
     WsppHttp http{"localhost", "3000"};
+    http.add_http_location_handler(std::make_shared<RootPage>());
     http.add_http_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/f/myscript.js", std::vector<std::string>{"f/myscript.js", "f/myscript.js.gz"}));
+    http.add_http_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/favicon.ico", std::vector<std::string>{"favicon.ico"}));
 
     http.run();
     return 0;
