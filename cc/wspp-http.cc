@@ -1,6 +1,5 @@
 #include <iostream>
 #include <fstream>
-#include <thread>
 
 #include "wspp-http.hh"
 
@@ -376,6 +375,7 @@ void Wspp::http_location_handle(std::string aLocation, WsppHttpResponseData& aRe
 
 WsppWebsocketLocationHandler& Wspp::find_connected(websocketpp::connection_hdl hdl)
 {
+    std::unique_lock<std::mutex> lock{mConnectedAccess};
     auto connected = mConnected.find(hdl);
     if (connected == mConnected.end())
         throw NoHandlerForConnection{"NoHandlerForConnection (internal)"};
@@ -387,14 +387,29 @@ WsppWebsocketLocationHandler& Wspp::find_connected(websocketpp::connection_hdl h
 
 void Wspp::create_connected(websocketpp::connection_hdl hdl)
 {
+    std::unique_lock<std::mutex> lock{mConnectedAccess};
     if (mConnected.find(hdl) != mConnected.end())
         throw HandlerForConnectionAlreadyExists{"HandlerForConnectionAlreadyExists (internal)"}; // internal error
     auto connection = implementation().connection(hdl);
     const std::string location = connection->get_resource();
     auto connected = mConnected.insert({hdl, find_handler_by_location(location).clone()}).first->second;
     connected->set_server_hdl(this, hdl);
+    std::cerr << std::this_thread::get_id() << " new connected, total: " << mConnected.size() << std::endl;
 
 } // Wspp::create_connected
+
+// ----------------------------------------------------------------------
+
+void Wspp::remove_connected(websocketpp::connection_hdl hdl)
+{
+    std::unique_lock<std::mutex> lock{mConnectedAccess};
+    auto connected = mConnected.find(hdl);
+    if (connected == mConnected.end())
+        throw NoHandlerForConnection{"NoHandlerForConnection (trying to remove it again?)"};
+    mConnected.erase(connected);
+    std::cerr << std::this_thread::get_id() << " connected removed, total: " << mConnected.size() << std::endl;
+
+} // Wspp::remove_connected
 
 // ----------------------------------------------------------------------
 
@@ -481,22 +496,28 @@ void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, w
 {
       // std::cerr << "MSG (op-code: " << msg->get_opcode() << "): \"" << msg->get_payload() << '"' << std::endl;
     mWspp->implementation().queue().push(hdl, &WsppWebsocketLocationHandler::message, msg->get_payload());
-      // $$ add entry to queue
-    // message(msg->get_payload());
 
 } // WsppWebsocketLocationHandler::on_message
 
 // ----------------------------------------------------------------------
 
-void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl /*hdl*/)
+void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
 {
     std::cerr << std::this_thread::get_id() << " connection closed" << std::endl;
-      // remove hdl from mWspp->mConnected
-      // notify running threads if they process this hdl
-      // add entry to queue
-    after_close("");
+      // $$ notify running threads if they process this hdl
+    mWspp->implementation().queue().push(hdl, &WsppWebsocketLocationHandler::call_after_close);
 
 } // WsppWebsocketLocationHandler::on_close
+
+// ----------------------------------------------------------------------
+
+void WsppWebsocketLocationHandler::call_after_close(std::string aMessage)
+{
+    std::cerr << std::this_thread::get_id() << " call_after_close" << std::endl;
+    mWspp->remove_connected(mHdl);
+    after_close(aMessage);
+
+} // WsppWebsocketLocationHandler::call_after_close
 
 // ----------------------------------------------------------------------
 

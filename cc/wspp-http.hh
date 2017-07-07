@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <thread>
 
 #pragma GCC diagnostic push
 #include "acmacs-base/boost-diagnostics.hh"
@@ -53,14 +54,16 @@ class Wspp
     std::vector<std::shared_ptr<WsppHttpLocationHandler>> mHttpLocationHandlers;
     std::vector<std::shared_ptr<WsppWebsocketLocationHandler>> mWebsocketLocationHandlers;
     std::map<websocketpp::connection_hdl, std::shared_ptr<WsppWebsocketLocationHandler>, std::owner_less<websocketpp::connection_hdl>> mConnected;
+    std::mutex mConnectedAccess;
 
     void http_location_handle(std::string aLocation, WsppHttpResponseData& aResponse);
     void create_connected(websocketpp::connection_hdl hdl);
+    void remove_connected(websocketpp::connection_hdl hdl);
     WsppWebsocketLocationHandler& find_connected(websocketpp::connection_hdl hdl);
     const WsppWebsocketLocationHandler& find_handler_by_location(std::string aLocation) const;
 
     friend class _wspp_internal::WsppImplementation;
-      //friend class WsppWebsocketLocationHandler;
+    friend class WsppWebsocketLocationHandler;
 
 }; // class Wspp
 
@@ -141,6 +144,7 @@ class WsppWebsocketLocationHandler
     void on_open(std::string);
     void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg);
     void on_close(websocketpp::connection_hdl hdl);
+    void call_after_close(std::string aMessage);
 
     friend class Wspp;
     friend class _wspp_internal::WsppImplementation;

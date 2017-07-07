@@ -57,6 +57,11 @@ class MyWS : public WsppWebsocketLocationHandler
             send("MyWS first", websocketpp::frame::opcode::binary);
         }
 
+    virtual void after_close(std::string)
+        {
+            std::cout << std::this_thread::get_id() << " MyWS after_close" << std::endl;
+        }
+
 }; // class MyWS
 
 // ----------------------------------------------------------------------
