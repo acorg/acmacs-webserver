@@ -104,6 +104,7 @@ namespace _wspp_internal
     {
      public:
         WsppImplementation(Wspp& aParent, size_t aNumberOfThreads);
+        inline ~WsppImplementation() { std::cerr << std::this_thread::get_id() << " ~WsppImplementation" << std::endl; }
 
         inline void listen(std::string aHost, std::string aPort)
             {
@@ -505,7 +506,9 @@ void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, w
 void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
 {
     std::cerr << std::this_thread::get_id() << " connection closed" << std::endl;
+    mWspp->find_connected(hdl).closed();
       // $$ notify running threads if they process this hdl
+    std::unique_lock<std::mutex> lock{mAccess};
     mWspp->implementation().queue().push(hdl, &WsppWebsocketLocationHandler::call_after_close);
 
 } // WsppWebsocketLocationHandler::on_close
@@ -524,7 +527,9 @@ void WsppWebsocketLocationHandler::call_after_close(std::string aMessage)
 
 void WsppWebsocketLocationHandler::send(std::string aMessage, websocketpp::frame::opcode::value op_code)
 {
-    mWspp->implementation().send(mHdl, aMessage, op_code);
+      // std::unique_lock<std::mutex> lock{mAccess};
+    if (mOpened)
+        mWspp->implementation().send(mHdl, aMessage, op_code);
 
 } // WsppWebsocketLocationHandler::send
 
