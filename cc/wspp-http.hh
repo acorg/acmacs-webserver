@@ -21,9 +21,54 @@ namespace websocketpp {
     namespace lib {
         using std::weak_ptr;
     }
-    template <typename config> class server;
+    // template <typename config> class server;
     using connection_hdl = lib::weak_ptr<void>;
 }
+
+// ----------------------------------------------------------------------
+
+class WsppHttpResponseData;
+class WsppHttpLocationHandler;
+class WsppWebsocketLocationHandler;
+class WsppImplementation;       // defined in wspp-http.cc
+
+class Wspp
+{
+ public:
+    Wspp(std::string aHost, std::string aPort);
+    ~Wspp();
+
+    inline void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
+    inline void add_location_handler(std::shared_ptr<WsppWebsocketLocationHandler> aHandler) { mWebsocketLocationHandlers.push_back(aHandler); }
+    void setup_logging(std::string access_log_filename = std::string{}, std::string error_log_filename = std::string{});
+
+    void run();
+
+    class NoHandlerForLocation : public std::runtime_error { public: using std::runtime_error::runtime_error; };
+
+ private:
+    std::unique_ptr<WsppImplementation> impl;
+    std::string certificate_chain_file;
+    std::string private_key_file;
+    std::string tmp_dh_file;
+    std::vector<std::shared_ptr<WsppHttpLocationHandler>> mHttpLocationHandlers;
+    std::vector<std::shared_ptr<WsppWebsocketLocationHandler>> mWebsocketLocationHandlers;
+    std::map<websocketpp::connection_hdl, std::shared_ptr<WsppWebsocketLocationHandler>, std::owner_less<websocketpp::connection_hdl>> mConnected;
+
+    void http_location_handle(std::string aLocation, WsppHttpResponseData& aResponse);
+    std::shared_ptr<WsppWebsocketLocationHandler> find_create_connected(websocketpp::connection_hdl hdl);
+    const WsppWebsocketLocationHandler& find_handler_by_location(std::string aLocation) const;
+
+    void send(websocketpp::connection_hdl hdl, std::string aMessage, websocketpp::frame::opcode::value op_code = websocketpp::frame::opcode::text);
+
+    friend class WsppImplementation;
+    friend class WsppWebsocketLocationHandler;
+
+    // friend class WsppHttpLocationHandler;
+    // inline websocketpp::server<websocketpp::config::asio_tls>& server() { return *mServer; }
+    // typename websocketpp::server<websocketpp::config::asio_tls>::connection_ptr connection(websocketpp::connection_hdl hdl);
+
+}; // class Wspp
 
 // ----------------------------------------------------------------------
 
@@ -75,56 +120,38 @@ class WsppHttpLocationHandlerFile : public WsppHttpLocationHandler
 class WsppWebsocketLocationHandler
 {
  public:
-    inline WsppWebsocketLocationHandler() : mServer {nullptr} {}
+    inline WsppWebsocketLocationHandler() : mWspp{nullptr} {}
+    inline WsppWebsocketLocationHandler(const WsppWebsocketLocationHandler& aSrc) : mWspp{aSrc.mWspp} {}
     virtual inline ~WsppWebsocketLocationHandler() {}
 
  protected:
-      // returns true if this handler is going to handle ws for the passed location
-    virtual bool use(std::string aLocation) = 0;
+    virtual std::shared_ptr<WsppWebsocketLocationHandler> clone() const = 0;
 
-    virtual void on_open(websocketpp::connection_hdl hdl) = 0;
-    virtual void on_close(websocketpp::connection_hdl /*hdl*/) {}
-    virtual void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg) = 0;
+      // returns true if this handler is going to handle ws for the passed location, runs in the main thread
+    virtual bool use(std::string aLocation) const = 0;
 
-    void send(websocketpp::connection_hdl hdl, std::string aMessage, websocketpp::frame::opcode::value op_code = websocketpp::frame::opcode::text);
+      // run in a child thread
+    virtual void opening() = 0;
+    virtual void message(std::string aMessage) = 0;
+      // websocket was already closed, no way to send message back
+    virtual void after_close() {}
+
+    void send(std::string aMessage, websocketpp::frame::opcode::value op_code = websocketpp::frame::opcode::text);
 
  private:
-    using server = websocketpp::server<websocketpp::config::asio_tls>;
-    server* mServer;
+    Wspp* mWspp;
+    websocketpp::connection_hdl mHdl;
+    // std::mutex mHdlAccess;
 
-    friend class WsppHttp;
+    inline void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { mWspp = aWspp; mHdl = aHdl; }
+    void on_open();
+    void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg);
+    void on_close(websocketpp::connection_hdl hdl);
+
+    friend class Wspp;
+    friend class WsppImplementation;
 
 }; // class WsppHttpLocationHandler
-
-// ----------------------------------------------------------------------
-
-class WsppHttp
-{
- public:
-    using server = websocketpp::server<websocketpp::config::asio_tls>;
-
-    WsppHttp(std::string aHost, std::string aPort);
-    ~WsppHttp();
-
-    inline void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
-    inline void add_location_handler(std::shared_ptr<WsppWebsocketLocationHandler> aHandler) { mWebsocketLocationHandlers.push_back(aHandler); }
-    void setup_logging(std::string access_log_filename = std::string{}, std::string error_log_filename = std::string{});
-
-    void run();
-
-      // must be public
-    std::string certificate_chain_file;
-    std::string private_key_file;
-    std::string tmp_dh_file;
-
- private:
-    server* mServer;
-    std::vector<std::shared_ptr<WsppHttpLocationHandler>> mHttpLocationHandlers;
-    std::vector<std::shared_ptr<WsppWebsocketLocationHandler>> mWebsocketLocationHandlers;
-
-    void on_http(websocketpp::connection_hdl hdl);
-    void on_open(websocketpp::connection_hdl hdl);
-};
 
 // ----------------------------------------------------------------------
 /// Local Variables:

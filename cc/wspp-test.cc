@@ -29,21 +29,29 @@ class RootPage : public WsppHttpLocationHandler
 
 class MyWS : public WsppWebsocketLocationHandler
 {
+ public:
+    using WsppWebsocketLocationHandler::WsppWebsocketLocationHandler;
+    inline MyWS(const MyWS& aSrc) : WsppWebsocketLocationHandler{aSrc} {}
+
  protected:
-    virtual inline bool use(std::string aLocation)
+    virtual std::shared_ptr<WsppWebsocketLocationHandler> clone() const
+        {
+            return std::make_shared<MyWS>(*this);
+        }
+
+    virtual inline bool use(std::string aLocation) const
         {
             return aLocation == "/myws";
         }
 
-    virtual inline void on_open(websocketpp::connection_hdl hdl)
+    virtual inline void opening()
         {
-            send(hdl, "hello");
+            send("hello");
         }
 
-    virtual inline void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg)
+    virtual inline void message(std::string aMessage)
         {
-            std::cerr << "MSG (op-code: " << msg->get_opcode() << "): \"" << msg->get_payload() << '"' << std::endl;
-            send(hdl, "MyWS first", websocketpp::frame::opcode::binary);
+            send("MyWS first", websocketpp::frame::opcode::binary);
         }
 
 }; // class MyWS
@@ -82,17 +90,14 @@ int main(int argc, char* const argv[])
     argc -= optind;
     argv += optind;
 
-      // char hostname[1024];
-      // if (gethostname(hostname, sizeof hostname))
-      //     strcpy(hostname, "localhost");
-    WsppHttp http{hostname, port};
-    http.setup_logging("/tmp/wspp.access.log", "/tmp/wspp.error.log");
-    http.add_location_handler(std::make_shared<RootPage>());
-    http.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/f/myscript.js", std::vector<std::string>{"f/myscript.js", "f/myscript.js.gz"}));
-    http.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/favicon.ico", std::vector<std::string>{"favicon.ico"}));
-    http.add_location_handler(std::make_shared<MyWS>());
+    Wspp wspp{hostname, port};
+    wspp.setup_logging("/tmp/wspp.access.log", "/tmp/wspp.error.log");
+    wspp.add_location_handler(std::make_shared<RootPage>());
+    wspp.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/f/myscript.js", std::vector<std::string>{"f/myscript.js", "f/myscript.js.gz"}));
+    wspp.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/favicon.ico", std::vector<std::string>{"favicon.ico"}));
+    wspp.add_location_handler(std::make_shared<MyWS>());
 
-    http.run();
+    wspp.run();
     return 0;
 }
 
