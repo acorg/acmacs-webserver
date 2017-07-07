@@ -15,13 +15,9 @@
 // ----------------------------------------------------------------------
 
 namespace websocketpp {
-    // namespace config {
-    //     struct asio_tls;
-    // }
     namespace lib {
         using std::weak_ptr;
     }
-    // template <typename config> class server;
     using connection_hdl = lib::weak_ptr<void>;
 }
 
@@ -63,10 +59,6 @@ class Wspp
 
     friend class WsppImplementation;
     friend class WsppWebsocketLocationHandler;
-
-    // friend class WsppHttpLocationHandler;
-    // inline websocketpp::server<websocketpp::config::asio_tls>& server() { return *mServer; }
-    // typename websocketpp::server<websocketpp::config::asio_tls>::connection_ptr connection(websocketpp::connection_hdl hdl);
 
 }; // class Wspp
 
