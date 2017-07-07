@@ -113,7 +113,8 @@ namespace _wspp_internal
 
         inline void send(websocketpp::connection_hdl hdl, std::string aMessage, websocketpp::frame::opcode::value op_code)
             {
-                mServer.send(hdl, aMessage, op_code);
+                if (!hdl.expired())
+                    mServer.send(hdl, aMessage, op_code);
             }
 
         inline auto& server() { return mServer; }
@@ -523,7 +524,6 @@ void WsppWebsocketLocationHandler::call_after_close(std::string aMessage)
 
 void WsppWebsocketLocationHandler::send(std::string aMessage, websocketpp::frame::opcode::value op_code)
 {
-      // std::unique_lock<std::mutex> lock{mHdlAccess}; // main thread may change mHdl?
     mWspp->implementation().send(mHdl, aMessage, op_code);
 
 } // WsppWebsocketLocationHandler::send

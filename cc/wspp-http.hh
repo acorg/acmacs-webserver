@@ -138,7 +138,6 @@ class WsppWebsocketLocationHandler
  private:
     Wspp* mWspp;
     websocketpp::connection_hdl mHdl;
-    // std::mutex mHdlAccess;
 
     inline void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { mWspp = aWspp; mHdl = aHdl; }
     void on_open(std::string);

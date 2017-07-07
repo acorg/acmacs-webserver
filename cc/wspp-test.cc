@@ -47,13 +47,16 @@ class MyWS : public WsppWebsocketLocationHandler
 
     virtual inline void opening(std::string)
         {
-            std::cout << std::this_thread::get_id() << " MyWS opening" << std::endl;
+            std::cerr << std::this_thread::get_id() << " MyWS opening" << std::endl;
             send("hello");
         }
 
     virtual inline void message(std::string aMessage)
         {
-            std::cout << std::this_thread::get_id() << " MyWS message: \"" << aMessage << '"' << std::endl;
+            std::cerr << std::this_thread::get_id() << " MyWS message: \"" << aMessage << '"' << std::endl;
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(2s);
+            std::cerr << std::this_thread::get_id() << " MyWS message processed, replying" << std::endl;
             send("MyWS first", websocketpp::frame::opcode::binary);
         }
 
