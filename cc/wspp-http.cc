@@ -80,6 +80,7 @@ WsppHttp::WsppHttp(std::string aHost, std::string aPort)
     mServer->set_open_handler(bind(&WsppHttp::on_open, this, _1));
     // mServer->set_message_handler(bind(&on_message, &echo_server, _1, _2));
 
+    std::cout << "Listening at " << aHost << ':' << aPort << std::endl;
     mServer->listen(aHost, aPort);
 
 } // WsppHttp::WsppHttp

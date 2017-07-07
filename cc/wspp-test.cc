@@ -52,10 +52,11 @@ class MyWS : public WsppWebsocketLocationHandler
 
 int main(int argc, char* const argv[])
 {
-    std::string hostname{"localhost"};
-    const char* const short_opts = "x:h";
+    std::string hostname{"localhost"}, port{"1169"};
+    const char* const short_opts = "x:p:h";
     const option long_opts[] = {
         {"host", required_argument, nullptr, 'x'},
+        {"port", required_argument, nullptr, 'p'},
         {"help", no_argument, nullptr, 'h'},
         {nullptr, no_argument, nullptr, 0}
     };
@@ -65,11 +66,14 @@ int main(int argc, char* const argv[])
           case 'x':
               hostname = optarg;
               break;
+          case 'p':
+              port = optarg;
+              break;
           case 0:
               std::cout << "getopt_long 0" << std::endl;
               break;
           case 'h':
-              std::cerr << "Usage: " << argv[0] << " [--host|-x <hostname>]" << std::endl;
+              std::cerr << "Usage: " << argv[0] << " [--host|-x <hostname>] [--port|-p <port>]" << std::endl;
               return 0;
           default:
               break;
@@ -81,8 +85,7 @@ int main(int argc, char* const argv[])
       // char hostname[1024];
       // if (gethostname(hostname, sizeof hostname))
       //     strcpy(hostname, "localhost");
-    std::cout << "hostname: " << hostname << std::endl;
-    WsppHttp http{hostname, "3000"};
+    WsppHttp http{hostname, port};
     http.setup_logging("/tmp/wspp.access.log", "/tmp/wspp.error.log");
     http.add_location_handler(std::make_shared<RootPage>());
     http.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/f/myscript.js", std::vector<std::string>{"f/myscript.js", "f/myscript.js.gz"}));
