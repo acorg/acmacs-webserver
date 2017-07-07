@@ -26,24 +26,27 @@ namespace websocketpp {
 class WsppHttpResponseData;
 class WsppHttpLocationHandler;
 class WsppWebsocketLocationHandler;
-class WsppImplementation;       // defined in wspp-http.cc
+namespace _wspp_internal { class WsppImplementation; }      // defined in wspp-http.cc
 
 class Wspp
 {
  public:
-    Wspp(std::string aHost, std::string aPort);
+    Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads);
     ~Wspp();
 
     inline void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
     inline void add_location_handler(std::shared_ptr<WsppWebsocketLocationHandler> aHandler) { mWebsocketLocationHandlers.push_back(aHandler); }
     void setup_logging(std::string access_log_filename = std::string{}, std::string error_log_filename = std::string{});
+    inline _wspp_internal::WsppImplementation& implementation() { return *impl; }
 
     void run();
 
     class NoHandlerForLocation : public std::runtime_error { public: using std::runtime_error::runtime_error; };
+    class NoHandlerForConnection : public std::runtime_error { public: using std::runtime_error::runtime_error; };
+    class HandlerForConnectionAlreadyExists : public std::runtime_error { public: using std::runtime_error::runtime_error; };
 
  private:
-    std::unique_ptr<WsppImplementation> impl;
+    std::unique_ptr<_wspp_internal::WsppImplementation> impl;
     std::string certificate_chain_file;
     std::string private_key_file;
     std::string tmp_dh_file;
@@ -52,13 +55,12 @@ class Wspp
     std::map<websocketpp::connection_hdl, std::shared_ptr<WsppWebsocketLocationHandler>, std::owner_less<websocketpp::connection_hdl>> mConnected;
 
     void http_location_handle(std::string aLocation, WsppHttpResponseData& aResponse);
-    std::shared_ptr<WsppWebsocketLocationHandler> find_create_connected(websocketpp::connection_hdl hdl);
+    void create_connected(websocketpp::connection_hdl hdl);
+    WsppWebsocketLocationHandler& find_connected(websocketpp::connection_hdl hdl);
     const WsppWebsocketLocationHandler& find_handler_by_location(std::string aLocation) const;
 
-    void send(websocketpp::connection_hdl hdl, std::string aMessage, websocketpp::frame::opcode::value op_code = websocketpp::frame::opcode::text);
-
-    friend class WsppImplementation;
-    friend class WsppWebsocketLocationHandler;
+    friend class _wspp_internal::WsppImplementation;
+      //friend class WsppWebsocketLocationHandler;
 
 }; // class Wspp
 
@@ -123,10 +125,10 @@ class WsppWebsocketLocationHandler
     virtual bool use(std::string aLocation) const = 0;
 
       // run in a child thread
-    virtual void opening() = 0;
+    virtual void opening(std::string) = 0;
     virtual void message(std::string aMessage) = 0;
       // websocket was already closed, no way to send message back
-    virtual void after_close() {}
+    virtual void after_close(std::string) {}
 
     void send(std::string aMessage, websocketpp::frame::opcode::value op_code = websocketpp::frame::opcode::text);
 
@@ -136,12 +138,12 @@ class WsppWebsocketLocationHandler
     // std::mutex mHdlAccess;
 
     inline void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { mWspp = aWspp; mHdl = aHdl; }
-    void on_open();
+    void on_open(std::string);
     void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg);
     void on_close(websocketpp::connection_hdl hdl);
 
     friend class Wspp;
-    friend class WsppImplementation;
+    friend class _wspp_internal::WsppImplementation;
 
 }; // class WsppHttpLocationHandler
 

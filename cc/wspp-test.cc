@@ -2,6 +2,7 @@
 #include <fstream>
 #include <chrono>
 #include <ctime>
+#include <thread>
 #include <getopt.h>
 
 #include "wspp-http.hh"
@@ -44,13 +45,15 @@ class MyWS : public WsppWebsocketLocationHandler
             return aLocation == "/myws";
         }
 
-    virtual inline void opening()
+    virtual inline void opening(std::string)
         {
+            std::cout << std::this_thread::get_id() << " MyWS opening" << std::endl;
             send("hello");
         }
 
     virtual inline void message(std::string aMessage)
         {
+            std::cout << std::this_thread::get_id() << " MyWS message: \"" << aMessage << '"' << std::endl;
             send("MyWS first", websocketpp::frame::opcode::binary);
         }
 
@@ -90,7 +93,7 @@ int main(int argc, char* const argv[])
     argc -= optind;
     argv += optind;
 
-    Wspp wspp{hostname, port};
+    Wspp wspp{hostname, port, 3 /* std::thread::hardware_concurrency() */};
     wspp.setup_logging("/tmp/wspp.access.log", "/tmp/wspp.error.log");
     wspp.add_location_handler(std::make_shared<RootPage>());
     wspp.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/f/myscript.js", std::vector<std::string>{"f/myscript.js", "f/myscript.js.gz"}));

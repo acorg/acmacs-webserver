@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <thread>
 
 #include "wspp-http.hh"
 
@@ -11,40 +12,158 @@ using message_ptr = websocketpp::config::asio::message_type::ptr;
 
 // ----------------------------------------------------------------------
 
-class WsppImplementation
+namespace _wspp_internal
 {
- public:
-    WsppImplementation(Wspp& aParent);
 
-    inline void listen(std::string aHost, std::string aPort)
+    class QueueElement
+    {
+     public:
+        using Handler = void (WsppWebsocketLocationHandler::*)(std::string aMessage);
+        inline QueueElement(websocketpp::connection_hdl aHdl, Handler aHandler, std::string aMessage) : hdl{aHdl}, message{aMessage}, handler{aHandler} {}
+
+        websocketpp::connection_hdl hdl;
+        std::string message;
+        Handler handler;
+
+        inline void call(WsppWebsocketLocationHandler& aHandler) { (aHandler.*handler)(message); }
+
+    }; // class QueueElement
+
+      // ----------------------------------------------------------------------
+
+    class Queue : public std::queue<QueueElement>
+    {
+     public:
+        inline Queue() = default; // : std::queue<QueueElement>{} {}
+
+        inline void push(websocketpp::connection_hdl aHdl, QueueElement::Handler aHandler, std::string aMessage = std::string{})
+            {
+                std::queue<QueueElement>::emplace(aHdl, aHandler, aMessage);
+                std::cerr << std::this_thread::get_id() << " queue::push size: " << std::queue<QueueElement>::size() << std::endl;
+                data_available();
+            }
+
+        inline QueueElement pop()
+            {
+                wait_for_data();
+                auto result = std::queue<QueueElement>::front();
+                std::queue<QueueElement>::pop();
+                std::cerr << std::this_thread::get_id() << " queue::pop size: " << std::queue<QueueElement>::size() << std::endl;
+                return result;
+            }
+
+     private:
+        std::condition_variable mNotifier;
+        std::mutex mMutexForNotifier;
+
+        inline void data_available()
+            {
+                std::unique_lock<std::mutex> lock{mMutexForNotifier};
+                mNotifier.notify_one();
+            }
+
+        inline void wait_for_data()
+            {
+                while (std::queue<QueueElement>::empty()) {
+                    std::unique_lock<std::mutex> lock{mMutexForNotifier};
+                    mNotifier.wait(lock, [this]() -> bool { return !this->empty(); });
+                }
+            }
+
+    }; // Queue
+
+      // ----------------------------------------------------------------------
+
+    class Thread
+    {
+     public:
+        inline Thread(Wspp& aWspp) : mWspp{aWspp}, mThread{std::bind(&Thread::run, this)} {}
+
+     private:
+        Wspp& mWspp;
+        std::thread mThread;
+
+        [[noreturn]] void run();
+
+    }; // class Thread
+
+      // ----------------------------------------------------------------------
+
+    class Threads : public std::vector<std::shared_ptr<Thread>>
+    {
+      public:
+        inline Threads(Wspp& aWspp, size_t aNumberOfThreads) : std::vector<std::shared_ptr<Thread>>{aNumberOfThreads > 0 ? aNumberOfThreads : 4}
         {
-            std::cout << "Listening at " << aHost << ':' << aPort << std::endl;
-            mServer.listen(aHost, aPort);
+            std::transform(this->begin(), this->end(), this->begin(), [&aWspp](const auto&) { return std::make_shared<Thread>(aWspp); });
         }
 
-    inline void send(websocketpp::connection_hdl hdl, std::string aMessage, websocketpp::frame::opcode::value op_code)
-        {
-            mServer.send(hdl, aMessage, op_code);
+    }; // class Threads
+
+      // ----------------------------------------------------------------------
+
+    class WsppImplementation
+    {
+     public:
+        WsppImplementation(Wspp& aParent, size_t aNumberOfThreads);
+
+        inline void listen(std::string aHost, std::string aPort)
+            {
+                std::cout << "Listening at " << aHost << ':' << aPort << std::endl;
+                mServer.listen(aHost, aPort);
+            }
+
+        inline void send(websocketpp::connection_hdl hdl, std::string aMessage, websocketpp::frame::opcode::value op_code)
+            {
+                mServer.send(hdl, aMessage, op_code);
+            }
+
+        inline auto& server() { return mServer; }
+        inline auto connection(websocketpp::connection_hdl hdl) { return mServer.get_con_from_hdl(hdl); }
+        inline auto& queue() { return mQueue; }
+
+          // runs in the thread
+        inline void pop_call()
+            {
+                auto data = mQueue.pop(); // blocks on waiting for a data in the queue
+                auto& connected = mParent.find_connected(data.hdl);
+                (connected.*data.handler)(data.message);
+            }
+
+     private:
+        Wspp& mParent;
+        websocketpp::server<websocketpp::config::asio_tls> mServer;
+        Queue mQueue;
+        Threads mThreads;
+
+        using context_ptr = websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
+
+        context_ptr on_tls_init(websocketpp::connection_hdl hdl);
+        void on_http(websocketpp::connection_hdl hdl);
+        void on_open(websocketpp::connection_hdl hdl);
+    };
+
+      // ----------------------------------------------------------------------
+
+    void Thread::run()
+    {
+        std::cerr << std::this_thread::get_id() << " start thread" << std::endl;
+        while (true) {
+            mWspp.implementation().pop_call(); // pop() blocks waiting for the message from queue
         }
+    }
 
-    inline auto& server() { return mServer; }
-    inline auto connection(websocketpp::connection_hdl hdl) { return mServer.get_con_from_hdl(hdl); }
-
- private:
-    Wspp& mParent;
-    websocketpp::server<websocketpp::config::asio_tls> mServer;
-
-    using context_ptr = websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
-
-    context_ptr on_tls_init(websocketpp::connection_hdl hdl);
-    void on_http(websocketpp::connection_hdl hdl);
-    void on_open(websocketpp::connection_hdl hdl);
-};
+} // namespace _wspp_internal
 
 // ----------------------------------------------------------------------
 
-WsppImplementation::WsppImplementation(Wspp& aParent)
-    : mParent{aParent}
+using namespace _wspp_internal;
+
+// ----------------------------------------------------------------------
+// WsppImplementation
+// ----------------------------------------------------------------------
+
+WsppImplementation::WsppImplementation(Wspp& aParent, size_t aNumberOfThreads)
+    : mParent{aParent}, mThreads{aParent, aNumberOfThreads}
 {
     mServer.init_asio();
 
@@ -144,15 +263,17 @@ void WsppImplementation::on_http(websocketpp::connection_hdl hdl)
 
 void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
 {
-    auto connected = mParent.find_create_connected(hdl);
-    connected->on_open();
+    mParent.create_connected(hdl);
+    mQueue.push(hdl, &WsppWebsocketLocationHandler::on_open);
 
 } // WsppImplementation::on_open
 
 // ----------------------------------------------------------------------
+// Wspp
+// ----------------------------------------------------------------------
 
-Wspp::Wspp(std::string aHost, std::string aPort)
-    : impl{new WsppImplementation{*this}},
+Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads)
+    : impl{new WsppImplementation{*this, aNumberOfThreads}},
       certificate_chain_file{"ssl/self-signed.crt"},
       private_key_file{"ssl/self-signed.key"},
       tmp_dh_file{"ssl/dh.pem"}
@@ -172,7 +293,7 @@ Wspp::~Wspp()
 void Wspp::setup_logging(std::string access_log_filename, std::string error_log_filename)
 {
     using namespace websocketpp::log;
-    auto& alog = impl->server().get_alog();
+    auto& alog = implementation().server().get_alog();
     if (!access_log_filename.empty()) {
         auto* fs = new std::ofstream{access_log_filename, std::ios_base::out | std::ios_base::app};
         if (fs && *fs)
@@ -201,7 +322,7 @@ void Wspp::setup_logging(std::string access_log_filename, std::string error_log_
                       | alevel::fail
                       ); // alevel::connect | alevel::disconnect);
 
-    auto& elog = impl->server().get_elog();
+    auto& elog = implementation().server().get_elog();
     if (!error_log_filename.empty()) {
         auto* fs = new std::ofstream{error_log_filename, std::ios_base::out | std::ios_base::app};
         if (fs && *fs)
@@ -235,8 +356,8 @@ void Wspp::run()
 {
     add_location_handler(std::make_shared<WsppHttpLocationHandler404>());
       // $$ add default websocket location handler
-    impl->server().start_accept();
-    impl->server().run();
+    implementation().server().start_accept();
+    implementation().server().run();
 
 } // Wspp::run
 
@@ -253,18 +374,42 @@ void Wspp::http_location_handle(std::string aLocation, WsppHttpResponseData& aRe
 
 // ----------------------------------------------------------------------
 
-std::shared_ptr<WsppWebsocketLocationHandler> Wspp::find_create_connected(websocketpp::connection_hdl hdl)
+WsppWebsocketLocationHandler& Wspp::find_connected(websocketpp::connection_hdl hdl)
 {
     auto connected = mConnected.find(hdl);
-    if (connected == mConnected.end()) {
-        auto connection = impl->connection(hdl);
-        const std::string location = connection->get_resource();
-        connected = mConnected.insert({hdl, find_handler_by_location(location).clone()}).first;
-        connected->second->set_server_hdl(this, hdl);
-    }
-    return connected->second;
+    if (connected == mConnected.end())
+        throw NoHandlerForConnection{"NoHandlerForConnection (internal)"};
+    return *connected->second;
 
-} // Wspp::find_create_connected
+} // Wspp::find_connected
+
+// ----------------------------------------------------------------------
+
+void Wspp::create_connected(websocketpp::connection_hdl hdl)
+{
+    if (mConnected.find(hdl) != mConnected.end())
+        throw HandlerForConnectionAlreadyExists{"HandlerForConnectionAlreadyExists (internal)"}; // internal error
+    auto connection = implementation().connection(hdl);
+    const std::string location = connection->get_resource();
+    auto connected = mConnected.insert({hdl, find_handler_by_location(location).clone()}).first->second;
+    connected->set_server_hdl(this, hdl);
+
+} // Wspp::create_connected
+
+// ----------------------------------------------------------------------
+
+// std::shared_ptr<WsppWebsocketLocationHandler> Wspp::find_create_connected(websocketpp::connection_hdl hdl)
+// {
+//     auto connected = mConnected.find(hdl);
+//     if (connected == mConnected.end()) {
+//         auto connection = impl->connection(hdl);
+//         const std::string location = connection->get_resource();
+//         connected = mConnected.insert({hdl, find_handler_by_location(location).clone()}).first;
+//         connected->second->set_server_hdl(this, hdl);
+//     }
+//     return connected->second;
+
+// } // Wspp::find_create_connected
 
 // ----------------------------------------------------------------------
 
@@ -278,14 +423,6 @@ const WsppWebsocketLocationHandler& Wspp::find_handler_by_location(std::string a
     throw NoHandlerForLocation{"No handler for location: " + aLocation};
 
 } // Wspp::find_handler_by_location
-
-// ----------------------------------------------------------------------
-
-void Wspp::send(websocketpp::connection_hdl hdl, std::string aMessage, websocketpp::frame::opcode::value op_code)
-{
-    impl->send(hdl, aMessage, op_code);
-
-} // Wspp::send
 
 // ----------------------------------------------------------------------
 
@@ -323,9 +460,9 @@ bool WsppHttpLocationHandlerFile::handle(std::string aLocation, WsppHttpResponse
 
 // ----------------------------------------------------------------------
 
-void WsppWebsocketLocationHandler::on_open()
+void WsppWebsocketLocationHandler::on_open(std::string aMessage)
 {
-    auto connection = mWspp->impl->connection(mHdl);
+    auto connection = mWspp->implementation().connection(mHdl);
 
     using websocketpp::lib::bind;
     using websocketpp::lib::placeholders::_1;
@@ -334,19 +471,18 @@ void WsppWebsocketLocationHandler::on_open()
     connection->set_message_handler(bind(&WsppWebsocketLocationHandler::on_message, this, _1, _2));
     connection->set_close_handler(bind(&WsppWebsocketLocationHandler::on_close, this, _1));
 
-      // $$ add entry to queue
-
-    opening();
+    opening(aMessage);
 
 } // WsppWebsocketLocationHandler::on_open
 
 // ----------------------------------------------------------------------
 
-void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl /*hdl*/, websocketpp::config::asio::message_type::ptr msg)
+void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg)
 {
+      // std::cerr << "MSG (op-code: " << msg->get_opcode() << "): \"" << msg->get_payload() << '"' << std::endl;
+    mWspp->implementation().queue().push(hdl, &WsppWebsocketLocationHandler::message, msg->get_payload());
       // $$ add entry to queue
-    std::cerr << "MSG (op-code: " << msg->get_opcode() << "): \"" << msg->get_payload() << '"' << std::endl;
-    message(msg->get_payload());
+    // message(msg->get_payload());
 
 } // WsppWebsocketLocationHandler::on_message
 
@@ -354,10 +490,11 @@ void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl /*hdl*
 
 void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl /*hdl*/)
 {
+    std::cerr << std::this_thread::get_id() << " connection closed" << std::endl;
       // remove hdl from mWspp->mConnected
       // notify running threads if they process this hdl
       // add entry to queue
-    after_close();
+    after_close("");
 
 } // WsppWebsocketLocationHandler::on_close
 
@@ -366,7 +503,7 @@ void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl /*hdl*/)
 void WsppWebsocketLocationHandler::send(std::string aMessage, websocketpp::frame::opcode::value op_code)
 {
       // std::unique_lock<std::mutex> lock{mHdlAccess}; // main thread may change mHdl?
-    mWspp->send(mHdl, aMessage, op_code);
+    mWspp->implementation().send(mHdl, aMessage, op_code);
 
 } // WsppWebsocketLocationHandler::send
 
