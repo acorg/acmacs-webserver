@@ -2,6 +2,7 @@
 #include <fstream>
 #include <chrono>
 #include <ctime>
+#include <getopt.h>
 
 #include "wspp-http.hh"
 
@@ -49,11 +50,37 @@ class MyWS : public WsppWebsocketLocationHandler
 
 // ----------------------------------------------------------------------
 
-int main()
+int main(int argc, char* const argv[])
 {
-    char hostname[1024];
-    if (gethostname(hostname, sizeof hostname))
-        strcpy(hostname, "localhost");
+    std::string hostname{"localhost"};
+    const char* const short_opts = "x:h";
+    const option long_opts[] = {
+        {"host", required_argument, nullptr, 'x'},
+        {"help", no_argument, nullptr, 'h'},
+        {nullptr, no_argument, nullptr, 0}
+    };
+    int opt;
+    while ((opt = getopt_long(argc, argv, short_opts, long_opts, nullptr)) != -1) {
+        switch (opt) {
+          case 'x':
+              hostname = optarg;
+              break;
+          case 0:
+              std::cout << "getopt_long 0" << std::endl;
+              break;
+          case 'h':
+              std::cerr << "Usage: " << argv[0] << " [--host|-x <hostname>]" << std::endl;
+              return 0;
+          default:
+              break;
+        }
+    }
+    argc -= optind;
+    argv += optind;
+
+      // char hostname[1024];
+      // if (gethostname(hostname, sizeof hostname))
+      //     strcpy(hostname, "localhost");
     std::cout << "hostname: " << hostname << std::endl;
     WsppHttp http{hostname, "3000"};
     http.setup_logging("/tmp/wspp.access.log", "/tmp/wspp.error.log");
