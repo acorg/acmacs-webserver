@@ -529,8 +529,9 @@ void WsppWebsocketLocationHandler::call_after_close(std::string aMessage)
 
 void WsppWebsocketLocationHandler::send(std::string aMessage, websocketpp::frame::opcode::value op_code)
 {
-      // std::unique_lock<std::mutex> lock{mAccess};
-    if (mOpened)
+    // std::unique_lock<std::mutex> lock{mAccess};
+      // if (mOpened)
+    if (!mHdl.expired() && mWspp)
         mWspp->implementation().send(mHdl, aMessage, op_code);
 
 } // WsppWebsocketLocationHandler::send

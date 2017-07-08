@@ -117,7 +117,7 @@ class WsppHttpLocationHandlerFile : public WsppHttpLocationHandler
 class WsppWebsocketLocationHandler
 {
  public:
-    inline WsppWebsocketLocationHandler() : mWspp{nullptr}, mOpened{false} {}
+    inline WsppWebsocketLocationHandler() : mWspp{nullptr}/* , mOpened{false} */ {}
     inline WsppWebsocketLocationHandler(const WsppWebsocketLocationHandler& aSrc) : mWspp{aSrc.mWspp} {}
     virtual inline ~WsppWebsocketLocationHandler() {}
 
@@ -138,11 +138,11 @@ class WsppWebsocketLocationHandler
  private:
     Wspp* mWspp;
     websocketpp::connection_hdl mHdl;
-    bool mOpened;
+    // bool mOpened;
     std::mutex mAccess;
 
-    inline void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { std::unique_lock<std::mutex> lock{mAccess}; mWspp = aWspp; mHdl = aHdl; mOpened = true; }
-    inline void closed() { std::unique_lock<std::mutex> lock{mAccess}; mOpened = false; } // immeditely called on receiving close event in the main thread
+    inline void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { std::unique_lock<std::mutex> lock{mAccess}; mWspp = aWspp; mHdl = aHdl; /* mOpened = true; */ }
+    inline void closed() { /* std::unique_lock<std::mutex> lock{mAccess}; mOpened = false; */ } // immeditely called on receiving close event in the main thread
     void open_queue_element_handler(std::string);
     void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg);
     void on_close(websocketpp::connection_hdl hdl);
