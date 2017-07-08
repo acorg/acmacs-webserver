@@ -265,7 +265,7 @@ void WsppImplementation::on_http(websocketpp::connection_hdl hdl)
 void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
 {
     mParent.create_connected(hdl);
-    mQueue.push(hdl, &WsppWebsocketLocationHandler::on_open);
+    mQueue.push(hdl, &WsppWebsocketLocationHandler::open_queue_element_handler);
 
 } // WsppImplementation::on_open
 
@@ -477,20 +477,22 @@ bool WsppHttpLocationHandlerFile::handle(std::string aLocation, WsppHttpResponse
 
 // ----------------------------------------------------------------------
 
-void WsppWebsocketLocationHandler::on_open(std::string aMessage)
+void WsppWebsocketLocationHandler::open_queue_element_handler(std::string aMessage)
 {
-    auto connection = mWspp->implementation().connection(mHdl);
+    if (!mHdl.expired()) {
+        auto connection = mWspp->implementation().connection(mHdl);
 
-    using websocketpp::lib::bind;
-    using websocketpp::lib::placeholders::_1;
-    using websocketpp::lib::placeholders::_2;
+        using websocketpp::lib::bind;
+        using websocketpp::lib::placeholders::_1;
+        using websocketpp::lib::placeholders::_2;
 
-    connection->set_message_handler(bind(&WsppWebsocketLocationHandler::on_message, this, _1, _2));
-    connection->set_close_handler(bind(&WsppWebsocketLocationHandler::on_close, this, _1));
+        connection->set_message_handler(bind(&WsppWebsocketLocationHandler::on_message, this, _1, _2));
+        connection->set_close_handler(bind(&WsppWebsocketLocationHandler::on_close, this, _1));
 
-    opening(aMessage);
+        opening(aMessage);
+    }
 
-} // WsppWebsocketLocationHandler::on_open
+} // WsppWebsocketLocationHandler::open_queue_element_handler
 
 // ----------------------------------------------------------------------
 

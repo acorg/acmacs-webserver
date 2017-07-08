@@ -31,7 +31,7 @@ class RootPage : public WsppHttpLocationHandler
 class MyWS : public WsppWebsocketLocationHandler
 {
  public:
-    using WsppWebsocketLocationHandler::WsppWebsocketLocationHandler;
+    inline MyWS() : WsppWebsocketLocationHandler{} {}
     inline MyWS(const MyWS& aSrc) : WsppWebsocketLocationHandler{aSrc} {}
 
  protected:
