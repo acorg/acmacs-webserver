@@ -414,21 +414,6 @@ void Wspp::remove_connected(websocketpp::connection_hdl hdl)
 
 // ----------------------------------------------------------------------
 
-// std::shared_ptr<WsppWebsocketLocationHandler> Wspp::find_create_connected(websocketpp::connection_hdl hdl)
-// {
-//     auto connected = mConnected.find(hdl);
-//     if (connected == mConnected.end()) {
-//         auto connection = impl->connection(hdl);
-//         const std::string location = connection->get_resource();
-//         connected = mConnected.insert({hdl, find_handler_by_location(location).clone()}).first;
-//         connected->second->set_server_hdl(this, hdl);
-//     }
-//     return connected->second;
-
-// } // Wspp::find_create_connected
-
-// ----------------------------------------------------------------------
-
 const WsppWebsocketLocationHandler& Wspp::find_handler_by_location(std::string aLocation) const
 {
     for (const auto& handler: mWebsocketLocationHandlers) {
@@ -476,19 +461,30 @@ bool WsppHttpLocationHandlerFile::handle(std::string aLocation, WsppHttpResponse
 
 // ----------------------------------------------------------------------
 
+void WsppWebsocketLocationHandler::closed()
+{
+    std::unique_lock<decltype(mAccess)> lock{mAccess, std::try_to_lock};
+    auto wspp = mWspp;
+    mWspp = nullptr;
+    wspp->remove_connected(mHdl); // may call destructor for this!
+
+} // WsppWebsocketLocationHandler::closed
+
+// ----------------------------------------------------------------------
+
 void WsppWebsocketLocationHandler::open_queue_element_handler(std::string aMessage)
 {
-    if (!mHdl.expired()) {
-        auto connection = mWspp->implementation().connection(mHdl);
+    try {
+        auto connection = implementation().connection(mHdl); // may throw ConnectionClosed
 
-        using websocketpp::lib::bind;
-        using websocketpp::lib::placeholders::_1;
-        using websocketpp::lib::placeholders::_2;
-
-        connection->set_message_handler(bind(&WsppWebsocketLocationHandler::on_message, this, _1, _2));
-        connection->set_close_handler(bind(&WsppWebsocketLocationHandler::on_close, this, _1));
+        connection->set_message_handler(websocketpp::lib::bind(&WsppWebsocketLocationHandler::on_message, this, websocketpp::lib::placeholders::_1, websocketpp::lib::placeholders::_2));
+        connection->set_close_handler(websocketpp::lib::bind(&WsppWebsocketLocationHandler::on_close, this, websocketpp::lib::placeholders::_1));
 
         opening(aMessage);
+    }
+    catch (ConnectionClosed&) {
+          // std::cerr << std::this_thread::get_id() << " cannot handle opening: connection already closed" << std::endl;
+        closed();
     }
 
 } // WsppWebsocketLocationHandler::open_queue_element_handler
@@ -498,8 +494,15 @@ void WsppWebsocketLocationHandler::open_queue_element_handler(std::string aMessa
 void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg)
 {
       // std::cerr << "MSG (op-code: " << msg->get_opcode() << "): \"" << msg->get_payload() << '"' << std::endl;
-    std::unique_lock<std::mutex> lock{mAccess};
-    mWspp->implementation().queue().push(mWspp->find_connected(hdl), &WsppWebsocketLocationHandler::message, msg->get_payload());
+    std::shared_lock<decltype(mAccess)> lock{mAccess};
+    auto connected = mWspp->find_connected(hdl);
+    try {
+        implementation().queue().push(connected, &WsppWebsocketLocationHandler::message, msg->get_payload());
+    }
+    catch (ConnectionClosed&) {
+          // std::cerr << std::this_thread::get_id() << " cannot handle message: connection already closed (may it ever happen??)" << std::endl;
+        closed();
+    }
 
 } // WsppWebsocketLocationHandler::on_message
 
@@ -508,10 +511,14 @@ void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, w
 void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
 {
     std::cerr << std::this_thread::get_id() << " connection closed" << std::endl;
-    std::unique_lock<std::mutex> lock{mAccess};
+    std::shared_lock<decltype(mAccess)> lock{mAccess};
     auto connected = mWspp->find_connected(hdl);
-    mWspp->remove_connected(hdl);
-    mWspp->implementation().queue().push(connected, &WsppWebsocketLocationHandler::call_after_close);
+    try {
+        implementation().queue().push(connected, &WsppWebsocketLocationHandler::call_after_close);
+    }
+    catch (ConnectionClosed&) {
+        std::cerr << "on_close event for already closed connection (internal)" << std::endl;
+    }
     closed();
 
 } // WsppWebsocketLocationHandler::on_close

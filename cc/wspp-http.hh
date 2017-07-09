@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <thread>
+#include <shared_mutex>
 
 #pragma GCC diagnostic push
 #include "acmacs-base/boost-diagnostics.hh"
@@ -117,7 +118,7 @@ class WsppHttpLocationHandlerFile : public WsppHttpLocationHandler
 class WsppWebsocketLocationHandler
 {
  public:
-    inline WsppWebsocketLocationHandler() : mWspp{nullptr}/* , mOpened{false} */ {}
+    inline WsppWebsocketLocationHandler() : mWspp{nullptr} {}
     inline WsppWebsocketLocationHandler(const WsppWebsocketLocationHandler& aSrc) : mWspp{aSrc.mWspp} {}
     virtual inline ~WsppWebsocketLocationHandler() {}
 
@@ -138,18 +139,17 @@ class WsppWebsocketLocationHandler
  private:
     Wspp* mWspp;
     websocketpp::connection_hdl mHdl;
-    // bool mOpened;
-    std::mutex mAccess;
+    std::shared_timed_mutex mAccess;
 
     class ConnectionClosed : public std::exception { public: using std::exception::exception; };
 
-    inline void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { std::unique_lock<std::mutex> lock{mAccess}; mWspp = aWspp; mHdl = aHdl; /* mOpened = true; */ }
-    inline void closed() { mWspp = nullptr; /* std::unique_lock<std::mutex> lock{mAccess}; mOpened = false; */ } // immeditely called on receiving close event in the main thread
+    inline void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { std::unique_lock<decltype(mAccess)> lock{mAccess}; mWspp = aWspp; mHdl = aHdl; }
+    void closed(); // may call (indirectly) destructor for this!
     void open_queue_element_handler(std::string);
     void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg);
     void on_close(websocketpp::connection_hdl hdl);
     void call_after_close(std::string aMessage);
-    inline _wspp_internal::WsppImplementation& implementation() { std::unique_lock<std::mutex> lock{mAccess}; if (!mWspp || mHdl.expired()) throw ConnectionClosed{}; return mWspp->implementation(); }
+    inline _wspp_internal::WsppImplementation& implementation() { std::shared_lock<decltype(mAccess)> lock{mAccess}; if (!mWspp || mHdl.expired()) throw ConnectionClosed{}; return mWspp->implementation(); }
 
     friend class Wspp;
     friend class _wspp_internal::WsppImplementation;
