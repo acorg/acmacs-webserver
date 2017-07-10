@@ -139,17 +139,22 @@ class WsppWebsocketLocationHandler
  private:
     Wspp* mWspp;
     websocketpp::connection_hdl mHdl;
-    std::shared_timed_mutex mAccess;
+    std::mutex mAccess;
 
     class ConnectionClosed : public std::exception { public: using std::exception::exception; };
 
     inline void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { std::unique_lock<decltype(mAccess)> lock{mAccess}; mWspp = aWspp; mHdl = aHdl; }
-    void closed(); // may call (indirectly) destructor for this!
+    void closed(); // may call (indirectly) destructor for this, caller needs to lock mAccess
     void open_queue_element_handler(std::string);
     void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg);
     void on_close(websocketpp::connection_hdl hdl);
     void call_after_close(std::string aMessage);
-    inline _wspp_internal::WsppImplementation& implementation() { std::shared_lock<decltype(mAccess)> lock{mAccess}; if (!mWspp || mHdl.expired()) throw ConnectionClosed{}; return mWspp->implementation(); }
+    inline _wspp_internal::WsppImplementation& wspp_implementation() // caller needs to lock mAccess
+        {
+            if (!mWspp || mHdl.expired())
+                throw ConnectionClosed{};
+            return mWspp->implementation();
+        }
 
     friend class Wspp;
     friend class _wspp_internal::WsppImplementation;
