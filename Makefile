@@ -9,7 +9,7 @@ MAKEFLAGS = -w
 
 WSPP_TEST = $(DIST)/wspp-test
 
-WSPP_TEST_SOURCES = wspp-test.cc wspp-http.cc
+WSPP_TEST_SOURCES = wspp-test.cc server.cc
 WSPP_LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $$(pkg-config --libs libssl) -lboost_system
 
 # ----------------------------------------------------------------------
@@ -49,7 +49,9 @@ CC = cc
 all: check-acmacsd-root $(WSPP_TEST)
 
 install: check-acmacsd-root $(WSPP_TEST)
-	#ln -sf $(ACMACS_WEBSERVER) $(ACMACSD_ROOT)/bin
+	@#ln -sf $(ACMACS_WEBSERVER) $(ACMACSD_ROOT)/bin
+	if [ ! -d $(ACMACSD_ROOT)/include/acmacs-webserver ]; then mkdir $(ACMACSD_ROOT)/include/acmacs-webserver; fi
+	ln -sf $(abspath cc)/*.hh $(ACMACSD_ROOT)/include/acmacs-webserver
 
 test: install
 	test/test

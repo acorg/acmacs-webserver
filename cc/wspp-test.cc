@@ -5,7 +5,7 @@
 #include <thread>
 #include <getopt.h>
 
-#include "wspp-http.hh"
+#include "server.hh"
 
 // ----------------------------------------------------------------------
 
