@@ -101,7 +101,7 @@ int main(int argc, char* const argv[])
     argc -= optind;
     argv += optind;
 
-    Wspp wspp{hostname, port, 3 /* std::thread::hardware_concurrency() */};
+    Wspp wspp{hostname, port, 3 /* std::thread::hardware_concurrency() */, "ssl/self-signed.crt", "ssl/self-signed.key", "ssl/dh.pem"};
     wspp.setup_logging("/tmp/wspp.access.log", "/tmp/wspp.error.log");
     wspp.add_location_handler(std::make_shared<RootPage>());
     wspp.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/f/myscript.js", std::vector<std::string>{"f/myscript.js", "f/myscript.js.gz"}));

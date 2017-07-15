@@ -7,10 +7,13 @@ MAKEFLAGS = -w
 
 # ----------------------------------------------------------------------
 
-WSPP_TEST = $(DIST)/wspp-test
+ACMACS_WEBSERVER_SOURCES = server.cc
+ACMACS_WEBSERVER_LIB = $(DIST)/libacmacswebserver.so
 
+WSPP_TEST = $(DIST)/wspp-test
 WSPP_TEST_SOURCES = wspp-test.cc server.cc
-WSPP_LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $$(pkg-config --libs libssl) -lboost_system
+
+LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $$(pkg-config --libs libssl) $$(pkg-config --cflags liblzma) $$(pkg-config --cflags libcrypto) -lboost_system -lpthread
 
 # ----------------------------------------------------------------------
 
@@ -31,7 +34,6 @@ OPTIMIZATION = -O3 #-fvisibility=hidden -flto
 PROFILE = # -pg
 CXXFLAGS = -g -MMD $(OPTIMIZATION) $(PROFILE) -fPIC -std=$(STD) $(WEVERYTHING) $(WARNINGS) -Icc -I$(BUILD)/include -I$(ACMACSD_ROOT)/include $(PKG_INCLUDES)
 LDFLAGS = $(OPTIMIZATION) $(PROFILE)
-LDLIBS = -L$(LIB_DIR) -lpthread $$(pkg-config --libs liblzma)
 
 PKG_INCLUDES = $$(pkg-config --cflags liblzma) $$(pkg-config --cflags libcrypto)
 
@@ -46,10 +48,11 @@ BUILD = build
 DIST = $(abspath dist)
 CC = cc
 
-all: check-acmacsd-root $(WSPP_TEST)
+all: check-acmacsd-root $(ACMACS_WEBSERVER_LIB) $(WSPP_TEST)
 
-install: check-acmacsd-root $(WSPP_TEST)
-	@#ln -sf $(ACMACS_WEBSERVER) $(ACMACSD_ROOT)/bin
+install: check-acmacsd-root $(ACMACS_WEBSERVER_LIB) $(WSPP_TEST)
+	ln -sf $(ACMACS_WEBSERVER_LIB) $(ACMACSD_ROOT)/lib
+	if [ $$(uname) = "Darwin" ]; then /usr/bin/install_name_tool -id $(ACMACSD_ROOT)/lib/$(notdir $(ACMACS_WEBSERVER_LIB)) $(ACMACSD_ROOT)/lib/$(notdir $(ACMACS_WEBSERVER_LIB)); fi
 	if [ ! -d $(ACMACSD_ROOT)/include/acmacs-webserver ]; then mkdir $(ACMACSD_ROOT)/include/acmacs-webserver; fi
 	ln -sf $(abspath cc)/*.hh $(ACMACSD_ROOT)/include/acmacs-webserver
 
@@ -61,6 +64,9 @@ test: install
 -include $(BUILD)/*.d
 
 # ----------------------------------------------------------------------
+
+$(ACMACS_WEBSERVER_LIB): $(patsubst %.cc,$(BUILD)/%.o,$(ACMACS_WEBSERVER_SOURCES)) | $(DIST) $(LOCATION_DB_LIB)
+	g++ -shared $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 $(WSPP_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
 	g++ $(LDFLAGS) -o $@ $^ $(WSPP_LDLIBS) $(LDLIBS)

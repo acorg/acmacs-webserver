@@ -33,7 +33,7 @@ namespace _wspp_internal { class WsppImplementation; }      // defined in wspp-h
 class Wspp
 {
  public:
-    Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads);
+    Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile);
     ~Wspp();
 
     inline void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }

@@ -152,6 +152,8 @@ namespace _wspp_internal
         context_ptr on_tls_init(websocketpp::connection_hdl hdl);
         void on_http(websocketpp::connection_hdl hdl);
         void on_open(websocketpp::connection_hdl hdl);
+
+        inline void close(websocketpp::connection_hdl hdl, std::string aReason) { return mServer.close(hdl, websocketpp::close::status::unsupported_data, aReason); }
     };
 
       // ----------------------------------------------------------------------
@@ -275,7 +277,13 @@ void WsppImplementation::on_http(websocketpp::connection_hdl hdl)
 
 void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
 {
-    mQueue.push(mParent.create_connected(hdl), &WsppWebsocketLocationHandler::open_queue_element_handler);
+    try {
+        mQueue.push(mParent.create_connected(hdl), &WsppWebsocketLocationHandler::open_queue_element_handler);
+    }
+    catch (std::exception& err) {
+        std::cerr << std::this_thread::get_id() << " error opening connection: " << err.what() << std::endl;
+        close(hdl, err.what());
+    }
 
 } // WsppImplementation::on_open
 
@@ -283,11 +291,11 @@ void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
 // Wspp
 // ----------------------------------------------------------------------
 
-Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads)
+Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile)
     : impl{new WsppImplementation{*this, aNumberOfThreads}},
-      certificate_chain_file{"ssl/self-signed.crt"},
-      private_key_file{"ssl/self-signed.key"},
-      tmp_dh_file{"ssl/dh.pem"}
+      certificate_chain_file{aCerficateChainFile},
+      private_key_file{aPrivateKeyFile},
+      tmp_dh_file{aTmpDhFile}
 {
     impl->listen(aHost, aPort);
 
@@ -509,12 +517,18 @@ void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, w
 {
       // std::cerr << "MSG (op-code: " << msg->get_opcode() << "): \"" << msg->get_payload() << '"' << std::endl;
     std::unique_lock<decltype(mAccess)> lock{mAccess};
-    auto connected = mWspp->find_connected(hdl);
     try {
-        wspp_implementation().queue().push(connected, &WsppWebsocketLocationHandler::message, msg->get_payload());
+        auto connected = mWspp->find_connected(hdl);
+        try {
+            wspp_implementation().queue().push(connected, &WsppWebsocketLocationHandler::message, msg->get_payload());
+        }
+        catch (ConnectionClosed&) {
+              // std::cerr << std::this_thread::get_id() << " cannot handle message: connection already closed (may it ever happen??)" << std::endl;
+            closed();
+        }
     }
-    catch (ConnectionClosed&) {
-          // std::cerr << std::this_thread::get_id() << " cannot handle message: connection already closed (may it ever happen??)" << std::endl;
+    catch (std::exception& err) {
+        std::cerr << std::this_thread::get_id() << " error handling message: " << err.what() << std::endl;
         closed();
     }
 
