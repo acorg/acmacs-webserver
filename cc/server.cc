@@ -162,7 +162,12 @@ namespace _wspp_internal
     {
         std::cerr << std::this_thread::get_id() << " start thread" << std::endl;
         while (true) {
-            mWspp.implementation().pop_call(); // pop() blocks waiting for the message from queue
+            try {
+                mWspp.implementation().pop_call(); // pop() blocks waiting for the message from queue
+            }
+            catch (std::exception& err) {
+                std::cerr << std::this_thread::get_id() << "handling failed: " << err.what() << std::endl;
+            }
         }
     }
 
@@ -540,12 +545,17 @@ void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
 {
     std::cerr << std::this_thread::get_id() << " connection closed" << std::endl;
     std::unique_lock<decltype(mAccess)> lock{mAccess};
-    auto connected = mWspp->find_connected(hdl);
     try {
-        wspp_implementation().queue().push(connected, &WsppWebsocketLocationHandler::call_after_close);
+        auto connected = mWspp->find_connected(hdl);
+        try {
+            wspp_implementation().queue().push(connected, &WsppWebsocketLocationHandler::call_after_close);
+        }
+        catch (ConnectionClosed&) {
+            std::cerr << "on_close event for already closed connection (internal)" << std::endl;
+        }
     }
-    catch (ConnectionClosed&) {
-        std::cerr << "on_close event for already closed connection (internal)" << std::endl;
+    catch (std::exception& err) {
+        std::cerr << std::this_thread::get_id() << " error handling closing: " << err.what() << std::endl;
     }
     closed();
 
