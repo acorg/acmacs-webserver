@@ -340,12 +340,8 @@ void Wspp::read_settings(const ServerSettings& settings)
     impl->listen(settings.host(), std::to_string(settings.port()));
 
     for (const auto& location: settings.locations()) {
-        const auto loc = get<std::string>(location, "location");
-        std::vector<std::string> files;
-        const auto files_value = get<rapidjson::Value::ConstArray>(location, "files");
-        std::transform(files_value.begin(), files_value.end(), std::back_inserter(files), [](const auto& elt) { return elt.GetString(); });
           // std::cerr << "LOC: " << location.location << ' ' << location.files << std::endl;
-        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc, files));
+        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(get<std::string>(location, "location"), get<std::vector<std::string>>(location, "files")));
     }
 
 } // Wspp::read_settings

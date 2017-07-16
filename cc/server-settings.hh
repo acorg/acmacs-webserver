@@ -42,9 +42,12 @@ class ServerSettings
     SS_FIELD(log_access, std::string)
     SS_FIELD(log_error, std::string)
 
+#undef SS_FIELD
+#undef SS_FIELD_DEFAULT
+
     inline auto locations() const { return get<rapidjson::Value::ConstArray>(mDoc, "locations"); }
 
- private:
+ protected:
     rapidjson::Document mDoc;
 
     // std::vector<internal::Location> locations;
