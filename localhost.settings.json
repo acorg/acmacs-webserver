@@ -1,7 +1,7 @@
 {
     "host": "localhost",
     "port": 1169,
-    "mongodb_uri": "",
+    "?mongodb_uri": "",
     "number_of_threads": 3,
     "certificate_chain_file": "ssl/self-signed.crt",
     "private_key_file": "ssl/self-signed.key",

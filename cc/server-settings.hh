@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include "acmacs-base/json-importer.hh"
+
 // ----------------------------------------------------------------------
 
 namespace internal
@@ -23,10 +25,10 @@ class ServerSettings
 {
  public:
     inline ServerSettings() : number_of_threads{0} {}
+    virtual ~ServerSettings();
 
     std::string host;
     size_t port;
-    std::string mongodb_uri;    // empty for default
     size_t number_of_threads;   // 0 - to autodetect
     std::string certificate_chain_file;
     std::string private_key_file;
@@ -38,6 +40,9 @@ class ServerSettings
     inline std::vector<internal::Location>& locations_ref() { return locations; } // for json_importer
 
     void read_from_file(std::string aFilename);
+
+ protected:
+    virtual void update_import_data(json_importer::data<ServerSettings>& aData);
 
 }; // class ServerSettings
 
