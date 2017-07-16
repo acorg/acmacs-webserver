@@ -305,18 +305,15 @@ Wspp::Wspp(std::string aServerSettingsFile)
 {
     ServerSettings settings;
     settings.read_from_file(aServerSettingsFile);
-    impl = std::make_unique<WsppImplementation>(*this, settings.number_of_threads == 0 ? std::thread::hardware_concurrency() : settings.number_of_threads);
-    certificate_chain_file = settings.certificate_chain_file;
-    private_key_file = settings.private_key_file;
-    tmp_dh_file = settings.tmp_dh_file;
-    setup_logging(settings.log_access, settings.log_error);
+    read_settings(settings);
 
-    impl->listen(settings.host, std::to_string(settings.port));
+} // Wspp::Wspp
 
-    for (const auto& location: settings.locations) {
-          // std::cerr << "LOC: " << location.location << ' ' << location.files << std::endl;
-        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(location.location, location.files));
-    }
+// ----------------------------------------------------------------------
+
+Wspp::Wspp(const ServerSettings& aSettings)
+{
+    read_settings(aSettings);
 
 } // Wspp::Wspp
 
@@ -337,6 +334,25 @@ Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::s
 Wspp::~Wspp()
 {
 } // Wspp::~Wspp
+
+// ----------------------------------------------------------------------
+
+void Wspp::read_settings(const ServerSettings& settings)
+{
+    impl = std::make_unique<WsppImplementation>(*this, settings.number_of_threads == 0 ? std::thread::hardware_concurrency() : settings.number_of_threads);
+    certificate_chain_file = settings.certificate_chain_file;
+    private_key_file = settings.private_key_file;
+    tmp_dh_file = settings.tmp_dh_file;
+    setup_logging(settings.log_access, settings.log_error);
+
+    impl->listen(settings.host, std::to_string(settings.port));
+
+    for (const auto& location: settings.locations) {
+          // std::cerr << "LOC: " << location.location << ' ' << location.files << std::endl;
+        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(location.location, location.files));
+    }
+
+} // Wspp::read_settings
 
 // ----------------------------------------------------------------------
 

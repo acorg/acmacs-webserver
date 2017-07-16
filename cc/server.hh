@@ -29,11 +29,13 @@ class WsppHttpResponseData;
 class WsppHttpLocationHandler;
 class WsppWebsocketLocationHandler;
 namespace _wspp_internal { class WsppImplementation; }      // defined in wspp-http.cc
+class ServerSettings;
 
 class Wspp
 {
  public:
     Wspp(std::string aServerSettingsFile);
+    Wspp(const ServerSettings& aSettings);
     Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile);
     ~Wspp();
 
@@ -58,6 +60,7 @@ class Wspp
     std::map<websocketpp::connection_hdl, std::shared_ptr<WsppWebsocketLocationHandler>, std::owner_less<websocketpp::connection_hdl>> mConnected;
     std::mutex mConnectedAccess;
 
+    void read_settings(const ServerSettings& aSettings);
     void http_location_handle(std::string aLocation, WsppHttpResponseData& aResponse);
     std::shared_ptr<WsppWebsocketLocationHandler> create_connected(websocketpp::connection_hdl hdl);
     void remove_connected(websocketpp::connection_hdl hdl);

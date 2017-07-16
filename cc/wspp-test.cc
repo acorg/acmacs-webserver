@@ -6,6 +6,7 @@
 #include <getopt.h>
 
 #include "server.hh"
+#include "server-settings.hh"
 
 // ----------------------------------------------------------------------
 
@@ -76,7 +77,9 @@ int main(int argc, char* const argv[])
         return 1;
     }
 
-    Wspp wspp{argv[1]};
+    ServerSettings settings;
+    settings.read_from_file(argv[1]);
+    Wspp wspp{settings};
 
     wspp.add_location_handler(std::make_shared<RootPage>());
     wspp.add_location_handler(std::make_shared<MyWS>());
