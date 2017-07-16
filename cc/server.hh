@@ -34,7 +34,6 @@ class ServerSettings;
 class Wspp
 {
  public:
-    Wspp(std::string aServerSettingsFile);
     Wspp(const ServerSettings& aSettings);
     Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile);
     ~Wspp();

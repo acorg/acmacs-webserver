@@ -78,7 +78,7 @@ int main(int argc, char* const argv[])
     }
 
     ServerSettings settings;
-    settings.read_from_file(argv[1]);
+    settings.read(argv[1]);
     Wspp wspp{settings};
 
     wspp.add_location_handler(std::make_shared<RootPage>());

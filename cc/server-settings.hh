@@ -2,8 +2,9 @@
 
 #include <string>
 #include <vector>
+#include <thread>
 
-#include "acmacs-base/json-importer.hh"
+#include "acmacs-base/rapidjson.hh"
 
 // ----------------------------------------------------------------------
 
@@ -24,27 +25,33 @@ namespace internal
 class ServerSettings
 {
  public:
-    inline ServerSettings() : number_of_threads{0} {}
+    inline ServerSettings() {}
     virtual ~ServerSettings();
 
-    std::string host;
-    size_t port;
-    size_t number_of_threads;   // 0 - to autodetect
-    std::string certificate_chain_file;
-    std::string private_key_file;
-    std::string tmp_dh_file;
-    std::string log_access;
-    std::string log_error;
-    std::vector<internal::Location> locations;
+    void read(std::string aFilename);
 
-    inline std::vector<internal::Location>& locations_ref() { return locations; } // for json_importer
+#define SS_FIELD(name, ret_type) inline ret_type name() const { return get(mDoc, #name, ret_type{}); }
+#define SS_FIELD_DEFAULT(name, defau) inline decltype(defau) name() const { return get(mDoc, #name, defau); }
 
-    void read_from_file(std::string aFilename);
+    SS_FIELD(host, std::string)
+    SS_FIELD(port, size_t)
+    SS_FIELD_DEFAULT(number_of_threads, std::thread::hardware_concurrency())
+    SS_FIELD(certificate_chain_file, std::string)
+    SS_FIELD(private_key_file, std::string)
+    SS_FIELD(tmp_dh_file, std::string)
+    SS_FIELD(log_access, std::string)
+    SS_FIELD(log_error, std::string)
 
- protected:
-    virtual void update_import_data(json_importer::data<ServerSettings>& aData);
+    inline auto locations() const { return get<rapidjson::Value::ConstArray>(mDoc, "locations"); }
+
+ private:
+    rapidjson::Document mDoc;
+
+    // std::vector<internal::Location> locations;
 
 }; // class ServerSettings
+
+// ----------------------------------------------------------------------
 
 // ----------------------------------------------------------------------
 /// Local Variables:

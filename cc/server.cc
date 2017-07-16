@@ -1,6 +1,6 @@
 #include <iostream>
 #include <fstream>
-#include <thread>
+#include <chrono>
 
 #pragma GCC diagnostic push
 #include "acmacs-base/boost-diagnostics.hh"
@@ -109,6 +109,7 @@ namespace _wspp_internal
       public:
         inline Threads(Wspp& aWspp, size_t aNumberOfThreads) : std::vector<std::shared_ptr<Thread>>{aNumberOfThreads > 0 ? aNumberOfThreads : 4}
         {
+            std::cout << "Starting " << aNumberOfThreads << " worker threads" << std::endl;
             std::transform(this->begin(), this->end(), this->begin(), [&aWspp](const auto&) { return std::make_shared<Thread>(aWspp); });
         }
 
@@ -164,7 +165,9 @@ namespace _wspp_internal
 
     void Thread::run()
     {
-        std::cerr << std::this_thread::get_id() << " start thread" << std::endl;
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(0.1s); // wait for queue creation in the main thread
+          //std::cerr << std::this_thread::get_id() << " start thread" << std::endl;
         while (true) {
             try {
                 mWspp.implementation().pop_call(); // pop() blocks waiting for the message from queue
@@ -300,17 +303,6 @@ void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
 // Wspp
 // ----------------------------------------------------------------------
 
-Wspp::Wspp(std::string aServerSettingsFile)
-    : impl{nullptr}
-{
-    ServerSettings settings;
-    settings.read_from_file(aServerSettingsFile);
-    read_settings(settings);
-
-} // Wspp::Wspp
-
-// ----------------------------------------------------------------------
-
 Wspp::Wspp(const ServerSettings& aSettings)
 {
     read_settings(aSettings);
@@ -339,17 +331,21 @@ Wspp::~Wspp()
 
 void Wspp::read_settings(const ServerSettings& settings)
 {
-    impl = std::make_unique<WsppImplementation>(*this, settings.number_of_threads == 0 ? std::thread::hardware_concurrency() : settings.number_of_threads);
-    certificate_chain_file = settings.certificate_chain_file;
-    private_key_file = settings.private_key_file;
-    tmp_dh_file = settings.tmp_dh_file;
-    setup_logging(settings.log_access, settings.log_error);
+    impl = std::make_unique<WsppImplementation>(*this, settings.number_of_threads());
+    certificate_chain_file = settings.certificate_chain_file();
+    private_key_file = settings.private_key_file();
+    tmp_dh_file = settings.tmp_dh_file();
+    setup_logging(settings.log_access(), settings.log_error());
 
-    impl->listen(settings.host, std::to_string(settings.port));
+    impl->listen(settings.host(), std::to_string(settings.port()));
 
-    for (const auto& location: settings.locations) {
+    for (const auto& location: settings.locations()) {
+        const auto loc = get<std::string>(location, "location");
+        std::vector<std::string> files;
+        const auto files_value = get<rapidjson::Value::ConstArray>(location, "files");
+        std::transform(files_value.begin(), files_value.end(), std::back_inserter(files), [](const auto& elt) { return elt.GetString(); });
           // std::cerr << "LOC: " << location.location << ' ' << location.files << std::endl;
-        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(location.location, location.files));
+        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc, files));
     }
 
 } // Wspp::read_settings
