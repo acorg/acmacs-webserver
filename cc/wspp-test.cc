@@ -79,8 +79,6 @@ int main(int argc, char* const argv[])
     Wspp wspp{argv[1]};
 
     wspp.add_location_handler(std::make_shared<RootPage>());
-    wspp.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/f/myscript.js", std::vector<std::string>{"f/myscript.js", "f/myscript.js.gz"}));
-    wspp.add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>("/favicon.ico", std::vector<std::string>{"favicon.ico"}));
     wspp.add_location_handler(std::make_shared<MyWS>());
 
     wspp.run();

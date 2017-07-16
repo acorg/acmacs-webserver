@@ -7,5 +7,9 @@
     "private_key_file": "ssl/self-signed.key",
     "tmp_dh_file": "ssl/dh.pem",
     "log_access": "/tmp/wspp.access.log",
-    "log_error": "/tmp/wspp.error.log"
+    "log_error": "/tmp/wspp.error.log",
+    "locations": [
+        {"location": "/f/myscript.js", "files": ["f/myscript.js", "f/myscript.js.gz"]},
+        {"location": "/favicon.ico", "files": ["favicon.ico"]}
+        ]
 }

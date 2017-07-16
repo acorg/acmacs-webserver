@@ -8,6 +8,11 @@ namespace jsi = json_importer;
 
 void ServerSettings::read_from_file(std::string aFilename)
 {
+    jsi::data<internal::Location> location_data = {
+        {"location", jsi::field(&internal::Location::location)},
+        {"files", jsi::field<internal::Location>(&internal::Location::files_ref)},
+    };
+
     jsi::data<ServerSettings> settings_data = {
         {"host", jsi::field(&ServerSettings::host)},
         {"port", jsi::field(&ServerSettings::port)},
@@ -18,6 +23,7 @@ void ServerSettings::read_from_file(std::string aFilename)
         {"tmp_dh_file", jsi::field(&ServerSettings::tmp_dh_file)},
         {"log_access", jsi::field(&ServerSettings::log_access)},
         {"log_error", jsi::field(&ServerSettings::log_error)},
+        {"locations", jsi::field(&ServerSettings::locations_ref, location_data)},
     };
 
     jsi::import(acmacs_base::read_file(aFilename), *this, settings_data);

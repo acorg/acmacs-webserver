@@ -1,8 +1,23 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 // ----------------------------------------------------------------------
+
+namespace internal
+{
+    class Location
+    {
+     public:
+        inline Location() {}
+
+        std::string location;
+        std::vector<std::string> files;
+
+        inline std::vector<std::string>& files_ref() { return files; } // for json_importer
+    };
+}
 
 class ServerSettings
 {
@@ -18,6 +33,9 @@ class ServerSettings
     std::string tmp_dh_file;
     std::string log_access;
     std::string log_error;
+    std::vector<internal::Location> locations;
+
+    inline std::vector<internal::Location>& locations_ref() { return locations; } // for json_importer
 
     void read_from_file(std::string aFilename);
 

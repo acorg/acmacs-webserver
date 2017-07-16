@@ -16,6 +16,8 @@
 #include <websocketpp/server.hpp>
 #pragma GCC diagnostic pop
 
+#include "acmacs-base/stream.hh"
+
 #include "server.hh"
 #include "server-settings.hh"
 
@@ -310,6 +312,11 @@ Wspp::Wspp(std::string aServerSettingsFile)
     setup_logging(settings.log_access, settings.log_error);
 
     impl->listen(settings.host, std::to_string(settings.port));
+
+    for (const auto& location: settings.locations) {
+          // std::cerr << "LOC: " << location.location << ' ' << location.files << std::endl;
+        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(location.location, location.files));
+    }
 
 } // Wspp::Wspp
 
