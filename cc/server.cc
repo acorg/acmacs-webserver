@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <thread>
 
 #pragma GCC diagnostic push
 #include "acmacs-base/boost-diagnostics.hh"
@@ -16,6 +17,7 @@
 #pragma GCC diagnostic pop
 
 #include "server.hh"
+#include "server-settings.hh"
 
 // ----------------------------------------------------------------------
 
@@ -294,6 +296,23 @@ void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
 
 // ----------------------------------------------------------------------
 // Wspp
+// ----------------------------------------------------------------------
+
+Wspp::Wspp(std::string aServerSettingsFile)
+    : impl{nullptr}
+{
+    ServerSettings settings;
+    settings.read_from_file(aServerSettingsFile);
+    impl = std::make_unique<WsppImplementation>(*this, settings.number_of_threads == 0 ? std::thread::hardware_concurrency() : settings.number_of_threads);
+    certificate_chain_file = settings.certificate_chain_file;
+    private_key_file = settings.private_key_file;
+    tmp_dh_file = settings.tmp_dh_file;
+    setup_logging(settings.log_access, settings.log_error);
+
+    impl->listen(settings.host, std::to_string(settings.port));
+
+} // Wspp::Wspp
+
 // ----------------------------------------------------------------------
 
 Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile)

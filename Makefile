@@ -7,13 +7,13 @@ MAKEFLAGS = -w
 
 # ----------------------------------------------------------------------
 
-ACMACS_WEBSERVER_SOURCES = server.cc
+ACMACS_WEBSERVER_SOURCES = server.cc server-settings.cc
 ACMACS_WEBSERVER_LIB = $(DIST)/libacmacswebserver.so
 
 WSPP_TEST = $(DIST)/wspp-test
-WSPP_TEST_SOURCES = wspp-test.cc server.cc
+WSPP_TEST_SOURCES = wspp-test.cc server.cc server-settings.cc
 
-LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $$(pkg-config --libs libssl) $$(pkg-config --cflags liblzma) $$(pkg-config --cflags libcrypto) -lboost_system -lpthread
+LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $$(pkg-config --libs libssl) $$(pkg-config --libs liblzma) $$(pkg-config --libs libcrypto) -lboost_filesystem -lboost_system -lpthread
 
 # ----------------------------------------------------------------------
 
@@ -69,7 +69,7 @@ $(ACMACS_WEBSERVER_LIB): $(patsubst %.cc,$(BUILD)/%.o,$(ACMACS_WEBSERVER_SOURCES
 	g++ -shared $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 $(WSPP_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
-	g++ $(LDFLAGS) -o $@ $^ $(WSPP_LDLIBS) $(LDLIBS)
+	g++ $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 # ----------------------------------------------------------------------
 

@@ -33,6 +33,7 @@ namespace _wspp_internal { class WsppImplementation; }      // defined in wspp-h
 class Wspp
 {
  public:
+    Wspp(std::string aServerSettingsFile);
     Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile);
     ~Wspp();
 

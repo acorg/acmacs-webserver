@@ -1,0 +1,11 @@
+{
+    "host": "localhost",
+    "port": 1169,
+    "mongodb_uri": "",
+    "number_of_threads": 3,
+    "certificate_chain_file": "ssl/self-signed.crt",
+    "private_key_file": "ssl/self-signed.key",
+    "tmp_dh_file": "ssl/dh.pem",
+    "log_access": "/tmp/wspp.access.log",
+    "log_error": "/tmp/wspp.error.log"
+}
