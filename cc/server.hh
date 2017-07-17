@@ -30,6 +30,7 @@ class WsppHttpLocationHandler;
 class WsppWebsocketLocationHandler;
 namespace _wspp_internal { class WsppImplementation; }      // defined in wspp-http.cc
 class ServerSettings;
+class HttpResource;
 
 class Wspp
 {
@@ -60,7 +61,7 @@ class Wspp
     std::mutex mConnectedAccess;
 
     void read_settings(const ServerSettings& aSettings);
-    void http_location_handle(std::string aLocation, WsppHttpResponseData& aResponse);
+    void http_location_handle(const HttpResource& aResource, WsppHttpResponseData& aResponse);
     std::shared_ptr<WsppWebsocketLocationHandler> create_connected(websocketpp::connection_hdl hdl);
     void remove_connected(websocketpp::connection_hdl hdl);
     std::shared_ptr<WsppWebsocketLocationHandler> find_connected(websocketpp::connection_hdl hdl);
@@ -70,6 +71,24 @@ class Wspp
     friend class WsppWebsocketLocationHandler;
 
 }; // class Wspp
+
+// ----------------------------------------------------------------------
+
+class HttpResource
+{
+ public:
+    using Argv = std::map<std::string, std::vector<std::string>>;
+
+    HttpResource(std::string aResource);
+
+    inline std::string location() const { return mLocation; }
+    inline const Argv& argv() const { return mArgv; }
+
+ private:
+    std::string mLocation;
+    Argv mArgv;
+
+}; // class HttpResource
 
 // ----------------------------------------------------------------------
 
@@ -91,14 +110,14 @@ class WsppHttpLocationHandler
     inline WsppHttpLocationHandler() = default;
     virtual inline ~WsppHttpLocationHandler() {}
 
-    virtual bool handle(std::string aLocation, WsppHttpResponseData& aResponse) = 0;
+    virtual bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse) = 0;
 
 }; // class WsppHttpLocationHandler
 
 class WsppHttpLocationHandler404 : public WsppHttpLocationHandler
 {
  public:
-    virtual bool handle(std::string aLocation, WsppHttpResponseData& aResponse);
+    virtual bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse);
 
 }; // class WsppHttpLocationHandler404
 
@@ -108,7 +127,7 @@ class WsppHttpLocationHandlerFile : public WsppHttpLocationHandler
     inline WsppHttpLocationHandlerFile(std::string aLocation, const std::vector<std::string>& aFiles)
         : mLocation{aLocation}, mFiles{aFiles} {}
 
-    virtual bool handle(std::string aLocation, WsppHttpResponseData& aResponse);
+    virtual bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse);
 
  private:
     std::string mLocation;

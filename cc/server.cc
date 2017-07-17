@@ -264,10 +264,10 @@ WsppImplementation::context_ptr WsppImplementation::on_tls_init(websocketpp::con
 void WsppImplementation::on_http(websocketpp::connection_hdl hdl)
 {
     auto connection = mServer.get_con_from_hdl(hdl);
-    const std::string location = connection->get_resource();
+    HttpResource resource{connection->get_resource()};
 
     WsppHttpResponseData response;
-    mParent.http_location_handle(location, response);
+    mParent.http_location_handle(resource, response);
     for (const auto& header: response.headers)
         connection->append_header(header.first, header.second);
     connection->set_body(response.body);
@@ -279,7 +279,7 @@ void WsppImplementation::on_http(websocketpp::connection_hdl hdl)
     // std::cout << "http secure: " << con->get_secure() << std::endl;
     // std::cout << "http host: \"" << con->get_host() << '"' << std::endl;
     // std::cout << "http port: " << con->get_port() << std::endl;
-    // std::cout << "http resource: \"" << con->get_resource() << '"' << std::endl; // location in URL
+    // std::cout << "http resource: \"" << connection->get_resource() << '"' << std::endl; // location in URL
       // std::cout << "http header: \"" << con->get_request_header("???") << '"' << std::endl;
     // std::cout << "http origin: \"" << con->get_origin() << '"' << std::endl; // SEG FAULT
 
@@ -421,10 +421,10 @@ void Wspp::run()
 
 // ----------------------------------------------------------------------
 
-void Wspp::http_location_handle(std::string aLocation, WsppHttpResponseData& aResponse)
+void Wspp::http_location_handle(const HttpResource& aResource, WsppHttpResponseData& aResponse)
 {
     for (auto handler: mHttpLocationHandlers) {
-        if (handler->handle(aLocation, aResponse))
+        if (handler->handle(aResource, aResponse))
             break;
     }
 
@@ -486,9 +486,9 @@ const WsppWebsocketLocationHandler& Wspp::find_handler_by_location(std::string a
 
 // ----------------------------------------------------------------------
 
-bool WsppHttpLocationHandler404::handle(std::string aLocation, WsppHttpResponseData& aResponse)
+bool WsppHttpLocationHandler404::handle(const HttpResource& aResource, WsppHttpResponseData& aResponse)
 {
-    aResponse.body = "<!doctype html><html><head><title>Error 404 (Resource not found)</title><body><h1>Error 404</h1><p>The requested URL " + aLocation + " was not found on this server.</p></body></head></html>";
+    aResponse.body = "<!doctype html><html><head><title>Error 404 (Resource not found)</title><body><h1>Error 404</h1><p>The requested URL " + aResource.location() + " was not found on this server.</p></body></head></html>";
     aResponse.status = websocketpp::http::status_code::not_found;
     return true;
 
@@ -496,10 +496,10 @@ bool WsppHttpLocationHandler404::handle(std::string aLocation, WsppHttpResponseD
 
 // ----------------------------------------------------------------------
 
-bool WsppHttpLocationHandlerFile::handle(std::string aLocation, WsppHttpResponseData& aResponse)
+bool WsppHttpLocationHandlerFile::handle(const HttpResource& aResource, WsppHttpResponseData& aResponse)
 {
     bool handled = false;
-    if (aLocation == mLocation) {
+    if (aResource.location() == mLocation) {
         for (const auto& filename: mFiles) {
             std::ifstream file{filename.c_str()};
             if (file) {
@@ -618,6 +618,39 @@ void WsppWebsocketLocationHandler::send(std::string aMessage, websocketpp::frame
     }
 
 } // WsppWebsocketLocationHandler::send
+
+// ----------------------------------------------------------------------
+
+HttpResource::HttpResource(std::string aResource)
+{
+    auto qmark = aResource.find('?');
+    if (qmark == std::string::npos) {
+        mLocation = aResource;
+    }
+    else {
+        mLocation = aResource.substr(0, qmark);
+        for (size_t substart = qmark + 1, subend = substart; subend < aResource.size(); substart = subend + 1) {
+            subend = aResource.find('&', substart);
+            if (subend != substart /* std::string::npos */) {
+                const auto chunk = aResource.substr(substart, subend - substart);
+                const auto eqsign = chunk.find('=');
+                const auto key = chunk.substr(0, eqsign);
+                const auto value = eqsign == std::string::npos ? std::string{} : chunk.substr(eqsign + 1);
+                const auto argv_iter = mArgv.find(key);
+                if (argv_iter == mArgv.end())
+                    mArgv.emplace(key, Argv::mapped_type{value});
+                else
+                    argv_iter->second.push_back(value);
+            }
+        }
+    }
+
+    // std::cerr << "HttpResource [" << mLocation << "] " << mArgv << std::endl;
+
+} // HttpResource::HttpResource
+
+// ----------------------------------------------------------------------
+
 
 // ----------------------------------------------------------------------
 /// Local Variables:
