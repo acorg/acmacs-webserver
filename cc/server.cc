@@ -135,8 +135,8 @@ namespace _wspp_internal
                     catch (std::exception& err) {
                         if (attempt < max_attempts) {
                             using namespace std::chrono_literals;
+                            std::cerr << "Cannot listen  at " << aHost << ':' << aPort << ": " << err.what() << ", retrying in 3s, attempt: " << attempt << std::endl;
                             std::this_thread::sleep_for(3s);
-                            std::cerr << "Cannot listen  at " << aHost << ':' << aPort << ": " << err.what() << ", retrying " << attempt << std::endl;
                         }
                         else {
                             std::cerr << "Cannot listen  at " << aHost << ':' << aPort << ": " << err.what() << ", exiting after " << attempt << std::endl;
