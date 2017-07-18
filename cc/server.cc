@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <typeinfo>
 
 #pragma GCC diagnostic push
 #include "acmacs-base/boost-diagnostics.hh"
@@ -190,7 +191,7 @@ namespace _wspp_internal
                 mWspp.implementation().pop_call(); // pop() blocks waiting for the message from queue
             }
             catch (std::exception& err) {
-                std::cerr << std::this_thread::get_id() << "handling failed: " << err.what() << std::endl;
+                std::cerr << std::this_thread::get_id() << " handling failed: (" << typeid(err).name() << "): " << err.what() << std::endl;
             }
         }
     }
