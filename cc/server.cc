@@ -125,8 +125,25 @@ namespace _wspp_internal
 
         inline void listen(std::string aHost, std::string aPort)
             {
-                std::cout << "Listening at " << aHost << ':' << aPort << std::endl;
-                mServer.listen(aHost, aPort);
+                constexpr const size_t max_attempts = 30;
+                for (size_t attempt = 1; ; ++attempt) {
+                    try {
+                        mServer.listen(aHost, aPort);
+                        std::cout << "Listening at " << aHost << ':' << aPort << std::endl;
+                        break;
+                    }
+                    catch (std::exception& err) {
+                        if (attempt < max_attempts) {
+                            using namespace std::chrono_literals;
+                            std::this_thread::sleep_for(3s);
+                            std::cerr << "Cannot listen  at " << aHost << ':' << aPort << ": " << err.what() << ", retrying " << attempt << std::endl;
+                        }
+                        else {
+                            std::cerr << "Cannot listen  at " << aHost << ':' << aPort << ": " << err.what() << ", exiting after " << attempt << std::endl;
+                            exit(1);
+                        }
+                    }
+                }
             }
 
         inline void send(websocketpp::connection_hdl hdl, std::string aMessage, websocketpp::frame::opcode::value op_code)
@@ -195,6 +212,7 @@ WsppImplementation::WsppImplementation(Wspp& aParent, size_t aNumberOfThreads)
 
     using websocketpp::lib::bind;
     using websocketpp::lib::placeholders::_1;
+    using websocketpp::lib::placeholders::_2;
 
     mServer.set_tls_init_handler(bind(&WsppImplementation::on_tls_init, this, _1));
     mServer.set_http_handler(bind(&WsppImplementation::on_http, this, _1));
@@ -273,15 +291,15 @@ void WsppImplementation::on_http(websocketpp::connection_hdl hdl)
     connection->set_body(response.body);
     connection->set_status(response.status);
 
-      //   // POST
-      // std::string res = con->get_request_body();
-      // std::cout << "got HTTP request with " << res.size() << " bytes of body data." << std::endl;
-    // std::cout << "http secure: " << con->get_secure() << std::endl;
-    // std::cout << "http host: \"" << con->get_host() << '"' << std::endl;
-    // std::cout << "http port: " << con->get_port() << std::endl;
-    // std::cout << "http resource: \"" << connection->get_resource() << '"' << std::endl; // location in URL
+        //   // POST
+        // std::string res = con->get_request_body();
+        // std::cout << "got HTTP request with " << res.size() << " bytes of body data." << std::endl;
+      // std::cout << "http secure: " << con->get_secure() << std::endl;
+      // std::cout << "http host: \"" << con->get_host() << '"' << std::endl;
+      // std::cout << "http port: " << con->get_port() << std::endl;
+      // std::cout << "http resource: \"" << connection->get_resource() << '"' << std::endl; // location in URL
       // std::cout << "http header: \"" << con->get_request_header("???") << '"' << std::endl;
-    // std::cout << "http origin: \"" << con->get_origin() << '"' << std::endl; // SEG FAULT
+      // std::cout << "http origin: \"" << con->get_origin() << '"' << std::endl; // SEG FAULT
 
 } // WsppImplementation::on_http
 
@@ -340,7 +358,7 @@ void Wspp::read_settings(const ServerSettings& settings)
     impl->listen(settings.host(), std::to_string(settings.port()));
 
     for (const auto& location: settings.locations()) {
-          // std::cerr << "LOC: " << location.location << ' ' << location.files << std::endl;
+            // std::cerr << "LOC: " << location.location << ' ' << location.files << std::endl;
         add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(get<std::string>(location, "location"), get<std::vector<std::string>>(location, "files")));
     }
 
@@ -360,21 +378,21 @@ void Wspp::setup_logging(std::string access_log_filename, std::string error_log_
             delete fs;
     }
 
-     // remove all logging, then enable individual channels
+       // remove all logging, then enable individual channels
 
     alog.clear_channels(alevel::all);
     alog.set_channels(alevel::none // ~/AD/include/websocketpp/logger/levels.hpp
                       | alevel::connect
                       | alevel::disconnect
-                        // | alevel::control
-                        // | alevel::frame_header
-                        // | alevel::frame_payload
-                        // | alevel::message_header // Reserved
-                        // | alevel::message_payload // Reserved
-                        // | alevel::endpoint // Reserved
-                        // | alevel::debug_handshake
-                        // | alevel::debug_close
-                        // | alevel::devel
+                          // | alevel::control
+                          // | alevel::frame_header
+                          // | alevel::frame_payload
+                          // | alevel::message_header // Reserved
+                          // | alevel::message_payload // Reserved
+                          // | alevel::endpoint // Reserved
+                          // | alevel::debug_handshake
+                          // | alevel::debug_close
+                          // | alevel::devel
                       | alevel::app // Special channel for application specific logs. Not used by the library.
                       | alevel::http // Access related to HTTP requests
                       | alevel::fail
@@ -413,7 +431,7 @@ void Wspp::setup_logging(std::string access_log_filename, std::string error_log_
 void Wspp::run()
 {
     add_location_handler(std::make_shared<WsppHttpLocationHandler404>());
-      // $$ add default websocket location handler
+        // $$ add default websocket location handler
     implementation().server().start_accept();
     implementation().server().run();
 
@@ -543,8 +561,8 @@ void WsppWebsocketLocationHandler::open_queue_element_handler(std::string aMessa
         opening(aMessage);
     }
     catch (ConnectionClosed&) {
-          // std::cerr << std::this_thread::get_id() << " cannot handle opening: connection already closed" << std::endl;
-          // thrown by wspp_implementation when lock is still locked
+            // std::cerr << std::this_thread::get_id() << " cannot handle opening: connection already closed" << std::endl;
+            // thrown by wspp_implementation when lock is still locked
         closed();
     }
 
@@ -554,7 +572,7 @@ void WsppWebsocketLocationHandler::open_queue_element_handler(std::string aMessa
 
 void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg)
 {
-      // std::cerr << "MSG (op-code: " << msg->get_opcode() << "): \"" << msg->get_payload() << '"' << std::endl;
+        // std::cerr << "MSG (op-code: " << msg->get_opcode() << "): \"" << msg->get_payload() << '"' << std::endl;
     std::unique_lock<decltype(mAccess)> lock{mAccess};
     try {
         auto connected = mWspp->find_connected(hdl);
@@ -562,7 +580,7 @@ void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, w
             wspp_implementation().queue().push(connected, &WsppWebsocketLocationHandler::message, msg->get_payload());
         }
         catch (ConnectionClosed&) {
-              // std::cerr << std::this_thread::get_id() << " cannot handle message: connection already closed (may it ever happen??)" << std::endl;
+                // std::cerr << std::this_thread::get_id() << " cannot handle message: connection already closed (may it ever happen??)" << std::endl;
             closed();
         }
     }
@@ -645,7 +663,7 @@ HttpResource::HttpResource(std::string aResource)
         }
     }
 
-    // std::cerr << "HttpResource [" << mLocation << "] " << mArgv << std::endl;
+      // std::cerr << "HttpResource [" << mLocation << "] " << mArgv << std::endl;
 
 } // HttpResource::HttpResource
 
