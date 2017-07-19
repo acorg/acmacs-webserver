@@ -360,7 +360,7 @@ void Wspp::read_settings(const ServerSettings& settings)
 
     for (const auto& location: settings.locations()) {
             // std::cerr << "LOC: " << location.location << ' ' << location.files << std::endl;
-        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(get<std::string>(location, "location"), get<std::vector<std::string>>(location, "files")));
+        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(json_importer::get<std::string>(location, "location"), json_importer::get<std::vector<std::string>>(location, "files")));
     }
 
 } // Wspp::read_settings

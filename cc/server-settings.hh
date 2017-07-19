@@ -30,8 +30,8 @@ class ServerSettings
 
     void read(std::string aFilename);
 
-#define SS_FIELD(name, ret_type) inline ret_type name() const { return get(mDoc, #name, ret_type{}); }
-#define SS_FIELD_DEFAULT(name, defau) inline decltype(defau) name() const { return get(mDoc, #name, defau); }
+#define SS_FIELD(name, ret_type) inline ret_type name() const { return json_importer::get(mDoc, #name, ret_type{}); }
+#define SS_FIELD_DEFAULT(name, defau) inline decltype(defau) name() const { return json_importer::get(mDoc, #name, defau); }
 
     SS_FIELD(host, std::string)
     SS_FIELD(port, size_t)
@@ -45,7 +45,7 @@ class ServerSettings
 #undef SS_FIELD
 #undef SS_FIELD_DEFAULT
 
-    inline auto locations() const { return get<rapidjson::Value::ConstArray>(mDoc, "locations"); }
+    inline auto locations() const { return json_importer::get<rapidjson::Value::ConstArray>(mDoc, "locations"); }
 
  protected:
     rapidjson::Document mDoc;
