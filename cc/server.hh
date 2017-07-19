@@ -144,6 +144,8 @@ class WsppWebsocketLocationHandler
     inline WsppWebsocketLocationHandler(const WsppWebsocketLocationHandler& aSrc) : mWspp{aSrc.mWspp} {}
     virtual inline ~WsppWebsocketLocationHandler() {}
 
+    void send(std::string aMessage, websocketpp::frame::opcode::value op_code = websocketpp::frame::opcode::text);
+
  protected:
     virtual std::shared_ptr<WsppWebsocketLocationHandler> clone() const = 0;
 
@@ -155,8 +157,6 @@ class WsppWebsocketLocationHandler
     virtual void message(std::string aMessage) = 0;
       // websocket was already closed, no way to send message back
     virtual void after_close(std::string) {}
-
-    void send(std::string aMessage, websocketpp::frame::opcode::value op_code = websocketpp::frame::opcode::text);
 
  private:
     Wspp* mWspp;
