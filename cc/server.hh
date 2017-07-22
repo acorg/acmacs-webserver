@@ -44,7 +44,7 @@ class Wspp
     void setup_logging(std::string access_log_filename = std::string{}, std::string error_log_filename = std::string{});
     inline _wspp_internal::WsppImplementation& implementation() { return *impl; }
     void stop_listening();
-    
+
     void run();
 
     class NoHandlerForLocation : public std::runtime_error { public: using std::runtime_error::runtime_error; };

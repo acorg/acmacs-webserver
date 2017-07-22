@@ -15,6 +15,7 @@
 #endif
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/server.hpp>
+#include <boost/filesystem.hpp>
 #pragma GCC diagnostic pop
 
 #include "acmacs-base/stream.hh"
@@ -366,8 +367,42 @@ void Wspp::read_settings(const ServerSettings& settings)
     impl->listen(settings.host(), std::to_string(settings.port()));
 
     for (const auto& location: settings.locations()) {
-            // std::cerr << "LOC: " << location.location << ' ' << location.files << std::endl;
-        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(json_importer::get<std::string>(location, "location"), json_importer::get<std::vector<std::string>>(location, "files")));
+        try {
+            const auto loc = json_importer::get<std::string>(location, "location", std::string{});
+            if (!loc.empty()) {
+                const auto files = json_importer::get(location, "files", std::vector<std::string>{});
+                if (!files.empty()) {
+                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc, files));
+                }
+                else {
+                    auto dirs = json_importer::get(location, "dirs", std::vector<std::string>{});
+                    if (!dirs.empty() || loc.back() != '/' || dirs[0].back() != '/') {
+                        for (const auto& dir: dirs) {
+                            using namespace boost::filesystem;
+                            for (auto& entry: directory_iterator(dir)) {
+                                auto& path = entry.path();
+                                if (exists(path)) {
+                                      // std::cerr << "add " << loc + path.filename().string() << "   " << path.string() << std::endl;
+                                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc + path.filename().string(), std::vector<std::string>{path.string()}));
+                                }
+                                else {
+                                    std::cerr << "No file: " << path.string() << std::endl;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        throw std::runtime_error("invalid value for \"files\" or \"dirs\"");
+                    }
+                }
+            }
+            else {
+                throw std::runtime_error("invalid value for \"location\"");
+            }
+        }
+        catch (std::exception& err) {
+            std::cerr << "Warning: invalid location entry: " <<  err.what() << std::endl;
+        }
     }
 
 } // Wspp::read_settings
