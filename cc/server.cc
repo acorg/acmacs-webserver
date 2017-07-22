@@ -382,8 +382,11 @@ void Wspp::read_settings(const ServerSettings& settings)
                             for (auto& entry: directory_iterator(dir)) {
                                 auto& path = entry.path();
                                 if (exists(path)) {
-                                      // std::cerr << "add " << loc + path.filename().string() << "   " << path.string() << std::endl;
-                                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc + path.filename().string(), std::vector<std::string>{path.string()}));
+                                    auto filename = path.filename();
+                                    if (filename.extension() == ".gz")
+                                        filename = filename.stem();
+                                      // std::cerr << loc + filename.string() << " <=  " << path.string() << std::endl;
+                                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc + filename.string(), std::vector<std::string>{path.string()}));
                                 }
                                 else {
                                     std::cerr << "No file: " << path.string() << std::endl;
