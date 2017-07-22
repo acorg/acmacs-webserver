@@ -130,13 +130,18 @@ namespace _wspp_internal
                 for (size_t attempt = 1; ; ++attempt) {
                     try {
                         mServer.listen(aHost, aPort);
+                        if (attempt > 1)
+                            std::cerr << std::endl;
                         std::cout << "Listening at " << aHost << ':' << aPort << std::endl;
                         break;
                     }
                     catch (std::exception& err) {
                         if (attempt < max_attempts) {
                             using namespace std::chrono_literals;
-                            std::cerr << "Cannot listen  at " << aHost << ':' << aPort << ": " << err.what() << ", retrying in 3s, attempt: " << attempt << std::endl;
+                            if (attempt == 1)
+                                std::cerr << "Cannot listen  at " << aHost << ':' << aPort << ": " << err.what() << ", retrying in 3s, attempt: " << attempt;
+                            else
+                                std::cerr << ' ' << attempt;
                             std::this_thread::sleep_for(3s);
                         }
                         else {
