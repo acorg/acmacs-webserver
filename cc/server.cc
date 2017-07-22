@@ -161,6 +161,7 @@ namespace _wspp_internal
         inline auto& server() { return mServer; }
         inline auto connection(websocketpp::connection_hdl hdl) { return mServer.get_con_from_hdl(hdl); }
         inline auto& queue() { return mQueue; }
+        inline void stop_listening() { mServer.stop_listening(); }
 
           // runs in the thread
         inline void pop_call()
@@ -215,6 +216,7 @@ WsppImplementation::WsppImplementation(Wspp& aParent, size_t aNumberOfThreads)
     : mParent{aParent}, mThreads{aParent, aNumberOfThreads}
 {
     mServer.init_asio();
+    mServer.set_reuse_addr(true);
 
     using websocketpp::lib::bind;
     using websocketpp::lib::placeholders::_1;
@@ -507,6 +509,14 @@ const WsppWebsocketLocationHandler& Wspp::find_handler_by_location(std::string a
     throw NoHandlerForLocation{"No handler for location: " + aLocation};
 
 } // Wspp::find_handler_by_location
+
+// ----------------------------------------------------------------------
+
+void Wspp::stop_listening()
+{
+    implementation().stop_listening();
+
+} // Wspp::stop_listening
 
 // ----------------------------------------------------------------------
 
