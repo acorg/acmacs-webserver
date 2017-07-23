@@ -4,15 +4,8 @@
 #include <thread>
 #include <shared_mutex>
 
-#pragma GCC diagnostic push
-#include "acmacs-base/boost-diagnostics.hh"
-#ifdef __clang__
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wmissing-noreturn"
-#endif
-// for websocketpp::frame::opcode, websocketpp::config::asio::message_type
-#include "websocketpp/config/asio.hpp"
-#pragma GCC diagnostic pop
+//#include "acmacs-webserver/websocketpp-asio.hh"
+#include "websocketpp-asio.hh"
 
 // ----------------------------------------------------------------------
 
