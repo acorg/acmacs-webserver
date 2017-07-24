@@ -46,6 +46,7 @@ class Wspp
 
  private:
     std::unique_ptr<_wspp_internal::WsppImplementation> impl;
+    std::string mHost, mPort;
     std::string certificate_chain_file;
     std::string private_key_file;
     std::string tmp_dh_file;

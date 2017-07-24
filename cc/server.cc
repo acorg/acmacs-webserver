@@ -56,16 +56,17 @@ namespace _wspp_internal
         inline void push(std::shared_ptr<WsppWebsocketLocationHandler> aConnected, QueueElement::Handler aHandler, std::string aMessage = std::string{})
             {
                 std::queue<QueueElement>::emplace(aConnected, aHandler, aMessage);
-                std::cerr << std::this_thread::get_id() << " queue::push size: " << std::queue<QueueElement>::size() << std::endl;
+                // std::cerr << std::this_thread::get_id() << " queue::push after size: " << std::queue<QueueElement>::size() << std::endl;
                 data_available();
             }
 
         inline QueueElement pop()
             {
                 wait_for_data();
+                // std::cerr << std::this_thread::get_id() << " queue::pop before size: " << std::queue<QueueElement>::size() << std::endl;
                 auto result = std::queue<QueueElement>::front();
                 std::queue<QueueElement>::pop();
-                std::cerr << std::this_thread::get_id() << " queue::pop size: " << std::queue<QueueElement>::size() << std::endl;
+                // std::cerr << std::this_thread::get_id() << " queue::pop after size: " << std::queue<QueueElement>::size() << std::endl;
                 return result;
             }
 
@@ -109,11 +110,19 @@ namespace _wspp_internal
     class Threads : public std::vector<std::shared_ptr<Thread>>
     {
       public:
-        inline Threads(Wspp& aWspp, size_t aNumberOfThreads) : std::vector<std::shared_ptr<Thread>>{aNumberOfThreads > 0 ? aNumberOfThreads : 4}
-        {
-            std::cout << "Starting " << aNumberOfThreads << " worker threads" << std::endl;
-            std::transform(this->begin(), this->end(), this->begin(), [&aWspp](const auto&) { return std::make_shared<Thread>(aWspp); });
-        }
+        inline Threads(Wspp& aWspp, size_t aNumberOfThreads)
+            : std::vector<std::shared_ptr<Thread>>{aNumberOfThreads > 0 ? aNumberOfThreads : 4}, mWspp{aWspp}
+            {
+            }
+
+        inline void start()
+            {
+                std::cout << "Starting " << size() << " worker threads" << std::endl;
+                std::transform(this->begin(), this->end(), this->begin(), [this](const auto&) { return std::make_shared<Thread>(this->mWspp); });
+            }
+
+     private:
+        Wspp& mWspp;
 
     }; // class Threads
 
@@ -162,6 +171,7 @@ namespace _wspp_internal
         inline auto& server() { return mServer; }
         inline auto connection(websocketpp::connection_hdl hdl) { return mServer.get_con_from_hdl(hdl); }
         inline auto& queue() { return mQueue; }
+        inline void start_threads() { mThreads.start(); }
         inline void stop_listening() { mServer.stop_listening(); }
 
           // runs in the thread
@@ -170,6 +180,7 @@ namespace _wspp_internal
                 auto data = mQueue.pop(); // blocks on waiting for a data in the queue
                 (data.connected.get()->*data.handler)(data.message);
             }
+
 
      private:
         Wspp& mParent;
@@ -184,14 +195,14 @@ namespace _wspp_internal
         void on_open(websocketpp::connection_hdl hdl);
 
         inline void close(websocketpp::connection_hdl hdl, std::string aReason) { return mServer.close(hdl, websocketpp::close::status::unsupported_data, aReason); }
-    };
+
+    }; // class WsppImplementation
 
       // ----------------------------------------------------------------------
 
     void Thread::run()
     {
         using namespace std::chrono_literals;
-        std::this_thread::sleep_for(0.1s); // wait for queue creation in the main thread
           //std::cerr << std::this_thread::get_id() << " start thread" << std::endl;
         while (true) {
             try {
@@ -340,12 +351,9 @@ Wspp::Wspp(const ServerSettings& aSettings)
 
 Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile)
     : impl{new WsppImplementation{*this, aNumberOfThreads}},
-      certificate_chain_file{aCerficateChainFile},
-      private_key_file{aPrivateKeyFile},
-      tmp_dh_file{aTmpDhFile}
+      mHost{aHost}, mPort{aPort},
+      certificate_chain_file{aCerficateChainFile}, private_key_file{aPrivateKeyFile}, tmp_dh_file{aTmpDhFile}
 {
-    impl->listen(aHost, aPort);
-
 } // Wspp::Wspp
 
 // ----------------------------------------------------------------------
@@ -359,12 +367,12 @@ Wspp::~Wspp()
 void Wspp::read_settings(const ServerSettings& settings)
 {
     impl = std::make_unique<WsppImplementation>(*this, settings.number_of_threads());
+    mHost = settings.host();
+    mPort = std::to_string(settings.port());
     certificate_chain_file = settings.certificate_chain_file();
     private_key_file = settings.private_key_file();
     tmp_dh_file = settings.tmp_dh_file();
     setup_logging(settings.log_access(), settings.log_error());
-
-    impl->listen(settings.host(), std::to_string(settings.port()));
 
     for (const auto& location: settings.locations()) {
         try {
@@ -407,6 +415,7 @@ void Wspp::read_settings(const ServerSettings& settings)
             std::cerr << "Warning: invalid location entry: " <<  err.what() << std::endl;
         }
     }
+
 
 } // Wspp::read_settings
 
@@ -478,8 +487,11 @@ void Wspp::run()
 {
     add_location_handler(std::make_shared<WsppHttpLocationHandler404>());
         // $$ add default websocket location handler
-    implementation().server().start_accept();
-    implementation().server().run();
+    auto& imp = implementation();
+    imp.listen(mHost, mPort);
+    imp.start_threads();
+    imp.server().start_accept();
+    imp.server().run();
 
 } // Wspp::run
 
