@@ -21,7 +21,7 @@ class RootPage : public WsppHttpLocationHandler
             if (aResource.location() == "/") {
                 std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
                 aResponse.body = R"(<html><head><script src="/f/myscript.js"></script>)";
-                aResponse.body += "<script>ARGV = " + json_writer::compact_json(aResource.argv(), "argv") + "</script>";
+                aResponse.body += "<script>ARGV = " + json_writer::compact_json(aResource.argv()) + "</script>";
                 aResponse.body += "</head><body><h1>WSPP-TEST RootPage</h1><p>";
                 aResponse.body += std::asctime(std::localtime(&now));
                 aResponse.body += "</p></body></html>";
