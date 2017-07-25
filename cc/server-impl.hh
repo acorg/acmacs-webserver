@@ -98,12 +98,7 @@ namespace _wspp_internal
             {
             }
 
-        inline void start()
-            {
-                std::cout << "Starting " << size() << " worker threads" << std::endl;
-//$                std::transform(this->begin(), this->end(), this->begin(), [this](const auto&) { return std::make_shared<Thread>(this->mWspp); });
-                std::transform(this->begin(), this->end(), this->begin(), [this](const auto&) { return std::shared_ptr<WsppThread>(this->mThreadMaker(this->mWspp)); });
-            }
+        void start();
 
      private:
         Wspp& mWspp;

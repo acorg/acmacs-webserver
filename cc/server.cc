@@ -433,7 +433,7 @@ void WsppThread::run()
 
 void WsppThread::initialize()
 {
-      //std::cerr << std::this_thread::get_id() << " start thread" << std::endl;
+    // std::cerr << std::this_thread::get_id() << " start thread" << std::endl;
 
 } // WsppThread::initialize
 

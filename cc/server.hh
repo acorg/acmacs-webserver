@@ -79,7 +79,7 @@ class WsppThread
 {
  public:
     virtual ~WsppThread();
-    static WsppThread* make(Wspp& aWspp) { return new WsppThread{aWspp}; }
+    static inline WsppThread* make(Wspp& aWspp) { return new WsppThread{aWspp}; }
 
  protected:
     inline WsppThread(Wspp& aWspp) : mWspp{aWspp}, mThread{std::bind(&WsppThread::run, this)} {}

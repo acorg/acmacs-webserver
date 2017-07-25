@@ -119,6 +119,19 @@ void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
 } // WsppImplementation::on_open
 
 // ----------------------------------------------------------------------
+
+void Threads::start()
+{
+    std::cout << "Starting " << size() << " worker threads" << std::endl;
+    std::transform(this->begin(), this->end(), this->begin(), [this](const auto&) {
+            // using namespace std::chrono_literals;
+            // std::this_thread::sleep_for(0.2s);
+            return std::shared_ptr<WsppThread>(this->mThreadMaker(this->mWspp));
+        });
+
+} // Threads::start
+
+// ----------------------------------------------------------------------
 /// Local Variables:
 /// eval: (if (fboundp 'eu-rename-buffer) (eu-rename-buffer))
 /// End:
