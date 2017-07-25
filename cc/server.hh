@@ -25,11 +25,17 @@ namespace _wspp_internal { class WsppImplementation; }      // defined in wspp-h
 class ServerSettings;
 class HttpResource;
 
+class Wspp;
+class WsppThread;
+using WsppThreadMaker = std::function<WsppThread*(Wspp&)>;
+
+// ----------------------------------------------------------------------
+
 class Wspp
 {
  public:
-    Wspp(const ServerSettings& aSettings);
-    Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile);
+    Wspp(const ServerSettings& aSettings, WsppThreadMaker aThreadMaker);
+    Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile, WsppThreadMaker aThreadMaker);
     ~Wspp();
 
     inline void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
@@ -55,7 +61,7 @@ class Wspp
     std::map<websocketpp::connection_hdl, std::shared_ptr<WsppWebsocketLocationHandler>, std::owner_less<websocketpp::connection_hdl>> mConnected;
     std::mutex mConnectedAccess;
 
-    void read_settings(const ServerSettings& aSettings);
+    void read_settings(const ServerSettings& aSettings, WsppThreadMaker aThreadMaker);
     void http_location_handle(const HttpResource& aResource, WsppHttpResponseData& aResponse);
     std::shared_ptr<WsppWebsocketLocationHandler> create_connected(websocketpp::connection_hdl hdl);
     void remove_connected(websocketpp::connection_hdl hdl);
@@ -66,6 +72,27 @@ class Wspp
     friend class WsppWebsocketLocationHandler;
 
 }; // class Wspp
+
+// ----------------------------------------------------------------------
+
+class WsppThread
+{
+ public:
+    virtual ~WsppThread();
+    static WsppThread* make(Wspp& aWspp) { return new WsppThread{aWspp}; }
+
+ protected:
+    inline WsppThread(Wspp& aWspp) : mWspp{aWspp}, mThread{std::bind(&WsppThread::run, this)} {}
+
+    virtual void initialize();
+
+ private:
+    Wspp& mWspp;
+    std::thread mThread;
+
+    [[noreturn]] void run();
+
+}; // class WsppThread
 
 // ----------------------------------------------------------------------
 

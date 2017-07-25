@@ -21,6 +21,9 @@ using message_ptr = websocketpp::config::asio::message_type::ptr;
 
 class WsppWebsocketLocationHandler;
 class Wspp;
+class WsppThread;
+
+using WsppThreadMaker = std::function<WsppThread*(Wspp&)>;
 
 // ----------------------------------------------------------------------
 
@@ -87,37 +90,24 @@ namespace _wspp_internal
 
       // ----------------------------------------------------------------------
 
-    class Thread
-    {
-     public:
-        inline Thread(Wspp& aWspp) : mWspp{aWspp}, mThread{std::bind(&Thread::run, this)} {}
-
-     private:
-        Wspp& mWspp;
-        std::thread mThread;
-
-        [[noreturn]] void run();
-
-    }; // class Thread
-
-      // ----------------------------------------------------------------------
-
-    class Threads : public std::vector<std::shared_ptr<Thread>>
+    class Threads : public std::vector<std::shared_ptr<WsppThread>>
     {
       public:
-        inline Threads(Wspp& aWspp, size_t aNumberOfThreads)
-            : std::vector<std::shared_ptr<Thread>>{aNumberOfThreads > 0 ? aNumberOfThreads : 4}, mWspp{aWspp}
+        inline Threads(Wspp& aWspp, size_t aNumberOfThreads, WsppThreadMaker aThreadMaker)
+            : std::vector<std::shared_ptr<WsppThread>>{aNumberOfThreads > 0 ? aNumberOfThreads : 4}, mWspp{aWspp}, mThreadMaker{aThreadMaker}
             {
             }
 
         inline void start()
             {
                 std::cout << "Starting " << size() << " worker threads" << std::endl;
-                std::transform(this->begin(), this->end(), this->begin(), [this](const auto&) { return std::make_shared<Thread>(this->mWspp); });
+//$                std::transform(this->begin(), this->end(), this->begin(), [this](const auto&) { return std::make_shared<Thread>(this->mWspp); });
+                std::transform(this->begin(), this->end(), this->begin(), [this](const auto&) { return std::shared_ptr<WsppThread>(this->mThreadMaker(this->mWspp)); });
             }
 
      private:
         Wspp& mWspp;
+        WsppThreadMaker mThreadMaker;
 
     }; // class Threads
 
@@ -126,7 +116,7 @@ namespace _wspp_internal
     class WsppImplementation
     {
      public:
-        WsppImplementation(Wspp& aParent, size_t aNumberOfThreads);
+        WsppImplementation(Wspp& aParent, size_t aNumberOfThreads, WsppThreadMaker aThreadMaker);
         inline ~WsppImplementation() { std::cerr << std::this_thread::get_id() << " ~WsppImplementation" << std::endl; }
 
         inline void listen(std::string aHost, std::string aPort)

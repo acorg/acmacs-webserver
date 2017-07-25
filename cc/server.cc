@@ -15,16 +15,16 @@ using namespace _wspp_internal;
 
 // ----------------------------------------------------------------------
 
-Wspp::Wspp(const ServerSettings& aSettings)
+Wspp::Wspp(const ServerSettings& aSettings, WsppThreadMaker aThreadMaker)
 {
-    read_settings(aSettings);
+    read_settings(aSettings, aThreadMaker);
 
 } // Wspp::Wspp
 
 // ----------------------------------------------------------------------
 
-Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile)
-    : impl{new WsppImplementation{*this, aNumberOfThreads}},
+Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile, WsppThreadMaker aThreadMaker)
+    : impl{new WsppImplementation{*this, aNumberOfThreads, aThreadMaker}},
       mHost{aHost}, mPort{aPort},
       certificate_chain_file{aCerficateChainFile}, private_key_file{aPrivateKeyFile}, tmp_dh_file{aTmpDhFile}
 {
@@ -38,9 +38,9 @@ Wspp::~Wspp()
 
 // ----------------------------------------------------------------------
 
-void Wspp::read_settings(const ServerSettings& settings)
+void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThreadMaker)
 {
-    impl = std::make_unique<WsppImplementation>(*this, settings.number_of_threads());
+    impl = std::make_unique<WsppImplementation>(*this, settings.number_of_threads(), aThreadMaker);
     mHost = settings.host();
     mPort = std::to_string(settings.port());
     certificate_chain_file = settings.certificate_chain_file();
@@ -406,6 +406,39 @@ HttpResource::HttpResource(std::string aResource)
       // std::cerr << "HttpResource [" << mLocation << "] " << mArgv << std::endl;
 
 } // HttpResource::HttpResource
+
+// ----------------------------------------------------------------------
+
+WsppThread::~WsppThread()
+{
+} // WsppThread::~WsppThread
+
+// ----------------------------------------------------------------------
+
+void WsppThread::run()
+{
+    initialize();
+    while (true) {
+        try {
+            mWspp.implementation().pop_call(); // pop() blocks waiting for the message from queue
+        }
+        catch (std::exception& err) {
+            std::cerr << std::this_thread::get_id() << " handling failed: (" << typeid(err).name() << "): " << err.what() << std::endl;
+        }
+    }
+
+} // WsppThread::run
+
+// ----------------------------------------------------------------------
+
+void WsppThread::initialize()
+{
+      //std::cerr << std::this_thread::get_id() << " start thread" << std::endl;
+
+} // WsppThread::initialize
+
+// ----------------------------------------------------------------------
+
 
 // ----------------------------------------------------------------------
 /// Local Variables:

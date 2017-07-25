@@ -5,8 +5,8 @@ using namespace _wspp_internal;
 
 // ----------------------------------------------------------------------
 
-WsppImplementation::WsppImplementation(Wspp& aParent, size_t aNumberOfThreads)
-    : mParent{aParent}, mThreads{aParent, aNumberOfThreads}
+WsppImplementation::WsppImplementation(Wspp& aParent, size_t aNumberOfThreads, WsppThreadMaker aThreadMaker)
+    : mParent{aParent}, mThreads{aParent, aNumberOfThreads, aThreadMaker}
 {
     mServer.init_asio();
     mServer.set_reuse_addr(true);
@@ -117,22 +117,6 @@ void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
     }
 
 } // WsppImplementation::on_open
-
-// ----------------------------------------------------------------------
-
-void Thread::run()
-{
-    using namespace std::chrono_literals;
-      //std::cerr << std::this_thread::get_id() << " start thread" << std::endl;
-    while (true) {
-        try {
-            mWspp.implementation().pop_call(); // pop() blocks waiting for the message from queue
-        }
-        catch (std::exception& err) {
-            std::cerr << std::this_thread::get_id() << " handling failed: (" << typeid(err).name() << "): " << err.what() << std::endl;
-        }
-    }
-}
 
 // ----------------------------------------------------------------------
 /// Local Variables:
