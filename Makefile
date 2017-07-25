@@ -7,11 +7,11 @@ MAKEFLAGS = -w
 
 # ----------------------------------------------------------------------
 
-ACMACS_WEBSERVER_SOURCES = server.cc server-settings.cc
+ACMACS_WEBSERVER_SOURCES = server.cc server-impl.cc server-settings.cc
 ACMACS_WEBSERVER_LIB = $(DIST)/libacmacswebserver.so
 
 WSPP_TEST = $(DIST)/wspp-test
-WSPP_TEST_SOURCES = wspp-test.cc server.cc server-settings.cc
+WSPP_TEST_SOURCES = wspp-test.cc server.cc server-impl.cc server-settings.cc
 
 LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $$(pkg-config --libs libssl) $$(pkg-config --libs liblzma) $$(pkg-config --libs libcrypto) -lboost_filesystem -lboost_system -lpthread
 
