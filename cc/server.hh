@@ -164,7 +164,7 @@ class WsppWebsocketLocationHandler
  public:
     inline WsppWebsocketLocationHandler() : mWspp{nullptr} {}
     inline WsppWebsocketLocationHandler(const WsppWebsocketLocationHandler& aSrc) : mWspp{aSrc.mWspp} {}
-    virtual inline ~WsppWebsocketLocationHandler() {}
+    virtual ~WsppWebsocketLocationHandler();
 
     void send(std::string aMessage, websocketpp::frame::opcode::value op_code = websocketpp::frame::opcode::text);
 

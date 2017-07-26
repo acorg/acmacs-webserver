@@ -34,6 +34,8 @@ Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::s
 
 Wspp::~Wspp()
 {
+    std::cerr << "~Wspp" << std::endl;
+
 } // Wspp::~Wspp
 
 // ----------------------------------------------------------------------
@@ -278,6 +280,14 @@ bool WsppHttpLocationHandlerFile::handle(const HttpResource& aResource, WsppHttp
 
 // ----------------------------------------------------------------------
 
+WsppWebsocketLocationHandler::~WsppWebsocketLocationHandler()
+{
+    std::cerr << std::this_thread::get_id() << " ~WsppWebsocketLocationHandler" << std::endl;
+
+} // WsppWebsocketLocationHandler::~WsppWebsocketLocationHandler
+
+// ----------------------------------------------------------------------
+
 void WsppWebsocketLocationHandler::closed()
 {
     auto wspp = mWspp;
@@ -336,8 +346,8 @@ void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, w
 void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
 {
     std::cerr << std::this_thread::get_id() << " connection closed" << std::endl;
-    std::unique_lock<decltype(mAccess)> lock{mAccess};
     try {
+        std::unique_lock<decltype(mAccess)> lock{mAccess}; // may throw std::system_error on recursive locking by the same thread (main thread in this case)
         auto connected = mWspp->find_connected(hdl);
         try {
             wspp_implementation().queue().push(connected, &WsppWebsocketLocationHandler::call_after_close);
@@ -350,6 +360,7 @@ void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
         std::cerr << std::this_thread::get_id() << " error handling closing: " << err.what() << std::endl;
     }
     closed();
+    std::cerr << std::this_thread::get_id() << " connection closed done" << std::endl;
 
 } // WsppWebsocketLocationHandler::on_close
 
