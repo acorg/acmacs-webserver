@@ -33,7 +33,7 @@ namespace _wspp_internal
     class QueueElement
     {
      public:
-        using Handler = void (WsppWebsocketLocationHandler::*)(std::string aMessage);
+        using Handler = void (WsppWebsocketLocationHandler::*)(std::string aMessage, WsppThread& aThread);
         inline QueueElement(std::shared_ptr<WsppWebsocketLocationHandler> aConnected, Handler aHandler, std::string aMessage) : connected{aConnected}, message{aMessage}, handler{aHandler} {}
 
         std::shared_ptr<WsppWebsocketLocationHandler> connected;
@@ -155,10 +155,10 @@ namespace _wspp_internal
         inline void stop_listening() { mServer.stop_listening(); }
 
           // runs in the thread
-        inline void pop_call()
+        inline void pop_call(WsppThread& aThread)
             {
                 auto data = mQueue.pop(); // blocks on waiting for a data in the queue
-                (data.connected.get()->*data.handler)(data.message);
+                (data.connected.get()->*data.handler)(data.message, aThread);
             }
 
 

@@ -288,7 +288,7 @@ void WsppWebsocketLocationHandler::closed()
 
 // ----------------------------------------------------------------------
 
-void WsppWebsocketLocationHandler::open_queue_element_handler(std::string aMessage)
+void WsppWebsocketLocationHandler::open_queue_element_handler(std::string aMessage, WsppThread& aThread)
 {
     std::unique_lock<decltype(mAccess)> lock{mAccess};
     try {
@@ -298,7 +298,7 @@ void WsppWebsocketLocationHandler::open_queue_element_handler(std::string aMessa
         connection->set_message_handler(websocketpp::lib::bind(&WsppWebsocketLocationHandler::on_message, this, websocketpp::lib::placeholders::_1, websocketpp::lib::placeholders::_2));
         connection->set_close_handler(websocketpp::lib::bind(&WsppWebsocketLocationHandler::on_close, this, websocketpp::lib::placeholders::_1));
 
-        opening(aMessage);
+        opening(aMessage, aThread);
     }
     catch (ConnectionClosed&) {
             // std::cerr << std::this_thread::get_id() << " cannot handle opening: connection already closed" << std::endl;
@@ -355,10 +355,10 @@ void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
 
 // ----------------------------------------------------------------------
 
-void WsppWebsocketLocationHandler::call_after_close(std::string aMessage)
+void WsppWebsocketLocationHandler::call_after_close(std::string aMessage, WsppThread& aThread)
 {
     std::cerr << std::this_thread::get_id() << " call_after_close" << std::endl;
-    after_close(aMessage);
+    after_close(aMessage, aThread);
 
 } // WsppWebsocketLocationHandler::call_after_close
 
@@ -420,7 +420,7 @@ void WsppThread::run()
     initialize();
     while (true) {
         try {
-            mWspp.implementation().pop_call(); // pop() blocks waiting for the message from queue
+            mWspp.implementation().pop_call(*this); // pop() blocks waiting for the message from queue
         }
         catch (std::exception& err) {
             std::cerr << std::this_thread::get_id() << " handling failed: (" << typeid(err).name() << "): " << err.what() << std::endl;

@@ -175,10 +175,10 @@ class WsppWebsocketLocationHandler
     virtual bool use(std::string aLocation) const = 0;
 
       // run in a child thread
-    virtual void opening(std::string) = 0;
-    virtual void message(std::string aMessage) = 0;
+    virtual void opening(std::string, WsppThread& aThread) = 0;
+    virtual void message(std::string aMessage, WsppThread& aThread) = 0;
       // websocket was already closed, no way to send message back
-    virtual void after_close(std::string) {}
+    virtual void after_close(std::string, WsppThread& /*aThread*/) {}
 
  private:
     Wspp* mWspp;
@@ -189,10 +189,10 @@ class WsppWebsocketLocationHandler
 
     inline void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { std::unique_lock<decltype(mAccess)> lock{mAccess}; mWspp = aWspp; mHdl = aHdl; }
     void closed(); // may call (indirectly) destructor for this, caller needs to lock mAccess
-    void open_queue_element_handler(std::string);
+    void open_queue_element_handler(std::string, WsppThread& aThread);
     void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg);
     void on_close(websocketpp::connection_hdl hdl);
-    void call_after_close(std::string aMessage);
+    void call_after_close(std::string aMessage, WsppThread& aThread);
     inline _wspp_internal::WsppImplementation& wspp_implementation() // caller needs to lock mAccess
         {
             if (!mWspp || mHdl.expired())

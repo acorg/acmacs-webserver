@@ -51,13 +51,13 @@ class MyWS : public WsppWebsocketLocationHandler
             return aLocation == "/myws";
         }
 
-    virtual inline void opening(std::string)
+    virtual inline void opening(std::string, WsppThread& /*aThread*/)
         {
             std::cerr << std::this_thread::get_id() << " MyWS opening" << std::endl;
             send("hello");
         }
 
-    virtual inline void message(std::string aMessage)
+    virtual inline void message(std::string aMessage, WsppThread& /*aThread*/)
         {
             std::cerr << std::this_thread::get_id() << " MyWS message: \"" << aMessage << '"' << std::endl;
             using namespace std::chrono_literals;
@@ -66,7 +66,7 @@ class MyWS : public WsppWebsocketLocationHandler
             send("MyWS first", websocketpp::frame::opcode::binary);
         }
 
-    virtual void after_close(std::string)
+    virtual void after_close(std::string, WsppThread& /*aThread*/)
         {
             std::cout << std::this_thread::get_id() << " MyWS after_close" << std::endl;
         }
