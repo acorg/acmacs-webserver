@@ -157,12 +157,7 @@ namespace _wspp_internal
         inline void stop_listening() { mServer.stop_listening(); }
 
           // runs in the thread
-        inline void pop_call(WsppThread& aThread)
-            {
-                auto data = mQueue.pop(); // blocks on waiting for a data in the queue
-                (data.connected.get()->*data.handler)(data.message, aThread);
-            }
-
+        void pop_call(WsppThread& aThread);
 
      private:
         Wspp& mParent;

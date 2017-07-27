@@ -120,6 +120,17 @@ void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
 
 // ----------------------------------------------------------------------
 
+  // runs in the thread
+void WsppImplementation::pop_call(WsppThread& aThread)
+{
+    auto data = mQueue.pop(); // blocks on waiting for a data in the queue
+    if (data.connected->mWspp)  // check if not already closed (in antoher thread), otherwise pure virtual function call occurs
+        (data.connected.get()->*data.handler)(data.message, aThread);
+
+} // WsppImplementation::pop_call
+
+// ----------------------------------------------------------------------
+
 void Threads::start()
 {
     print_cerr("Starting ", size(), " worker threads");
