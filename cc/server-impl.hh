@@ -15,6 +15,8 @@
 #include <boost/filesystem.hpp>
 #pragma GCC diagnostic pop
 
+#include "print.hh"
+
 // ----------------------------------------------------------------------
 
 using message_ptr = websocketpp::config::asio::message_type::ptr;
@@ -54,17 +56,17 @@ namespace _wspp_internal
         inline void push(std::shared_ptr<WsppWebsocketLocationHandler> aConnected, QueueElement::Handler aHandler, std::string aMessage = std::string{})
             {
                 std::queue<QueueElement>::emplace(aConnected, aHandler, aMessage);
-                // std::cerr << std::this_thread::get_id() << " queue::push after size: " << std::queue<QueueElement>::size() << std::endl;
+                // print_cerr(std::this_thread::get_id(), " queue::push after size: ", std::queue<QueueElement>::size());
                 data_available();
             }
 
         inline QueueElement pop()
             {
                 wait_for_data();
-                // std::cerr << std::this_thread::get_id() << " queue::pop before size: " << std::queue<QueueElement>::size() << std::endl;
+                // print_cerr(std::this_thread::get_id(), " queue::pop before size: ", std::queue<QueueElement>::size());
                 auto result = std::queue<QueueElement>::front();
                 std::queue<QueueElement>::pop();
-                // std::cerr << std::this_thread::get_id() << " queue::pop after size: " << std::queue<QueueElement>::size() << std::endl;
+                // print_cerr(std::this_thread::get_id(), " queue::pop after size: ", std::queue<QueueElement>::size());
                 return result;
             }
 
@@ -112,7 +114,7 @@ namespace _wspp_internal
     {
      public:
         WsppImplementation(Wspp& aParent, size_t aNumberOfThreads, WsppThreadMaker aThreadMaker);
-        inline ~WsppImplementation() { std::cerr << std::this_thread::get_id() << " ~WsppImplementation" << std::endl; }
+        inline ~WsppImplementation() { print_cerr(std::this_thread::get_id(), " ~WsppImplementation"); }
 
         inline void listen(std::string aHost, std::string aPort)
             {
@@ -122,7 +124,7 @@ namespace _wspp_internal
                         mServer.listen(aHost, aPort);
                         if (attempt > 1)
                             std::cerr << std::endl;
-                        std::cout << "Listening at " << aHost << ':' << aPort << std::endl;
+                        print_cerr("Listening at ", aHost, ':', aPort);
                         break;
                     }
                     catch (std::exception& err) {
@@ -135,7 +137,7 @@ namespace _wspp_internal
                             std::this_thread::sleep_for(3s);
                         }
                         else {
-                            std::cerr << "Cannot listen  at " << aHost << ':' << aPort << ": " << err.what() << ", exiting after " << attempt << std::endl;
+                            print_cerr("Cannot listen  at ", aHost, ':', aPort, ": ", err.what(), ", exiting after ", attempt);
                             exit(1);
                         }
                     }

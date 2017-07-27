@@ -39,7 +39,7 @@ WsppImplementation::context_ptr WsppImplementation::on_tls_init(websocketpp::con
     context_ptr ctx = websocketpp::lib::make_shared<asio::ssl::context>(asio::ssl::context::sslv23);
 
     try {
-          // std::cout << "using TLS mode: " << (mode == MOZILLA_MODERN ? "Mozilla Modern" : "Mozilla Intermediate") << std::endl;
+          // print_cerr("using TLS mode: ", (mode == MOZILLA_MODERN ? "Mozilla Modern" : "Mozilla Intermediate"));
         const char* ciphers = nullptr;
         switch (mode) {
           case MOZILLA_MODERN:
@@ -66,12 +66,12 @@ WsppImplementation::context_ptr WsppImplementation::on_tls_init(websocketpp::con
         ctx->use_tmp_dh_file(mParent.tmp_dh_file);
 
         if (SSL_CTX_set_cipher_list(ctx->native_handle(), ciphers) != 1) {
-            std::cout << "Error setting cipher list" << std::endl;
+            print_cerr("Error setting cipher list");
         }
 
     }
     catch (std::exception& e) {
-        std::cout << "Exception in initializing TLS: " << e.what() << std::endl;
+        print_cerr("Exception in initializing TLS: ", e.what());
         throw;
     }
     return ctx;
@@ -94,13 +94,13 @@ void WsppImplementation::on_http(websocketpp::connection_hdl hdl)
 
         //   // POST
         // std::string res = con->get_request_body();
-        // std::cout << "got HTTP request with " << res.size() << " bytes of body data." << std::endl;
-      // std::cout << "http secure: " << con->get_secure() << std::endl;
-      // std::cout << "http host: \"" << con->get_host() << '"' << std::endl;
-      // std::cout << "http port: " << con->get_port() << std::endl;
-      // std::cout << "http resource: \"" << connection->get_resource() << '"' << std::endl; // location in URL
-      // std::cout << "http header: \"" << con->get_request_header("???") << '"' << std::endl;
-      // std::cout << "http origin: \"" << con->get_origin() << '"' << std::endl; // SEG FAULT
+        // print_cerr("got HTTP request with ", res.size(), " bytes of body data.");
+      // print_cerr("http secure: ", con->get_secure());
+      // print_cerr("http host: \"", con->get_host(), '"');
+      // print_cerr("http port: ", con->get_port());
+      // print_cerr("http resource: \"", connection->get_resource(), '"'); // location in URL
+      // print_cerr("http header: \"", con->get_request_header("???"), '"');
+      // print_cerr("http origin: \"", con->get_origin(), '"'); // SEG FAULT
 
 } // WsppImplementation::on_http
 
@@ -112,7 +112,7 @@ void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
         mQueue.push(mParent.create_connected(hdl), &WsppWebsocketLocationHandler::open_queue_element_handler);
     }
     catch (std::exception& err) {
-        std::cerr << std::this_thread::get_id() << " error opening connection: " << err.what() << std::endl;
+        print_cerr("error opening connection: ", err.what());
         close(hdl, err.what());
     }
 
@@ -122,7 +122,7 @@ void WsppImplementation::on_open(websocketpp::connection_hdl hdl)
 
 void Threads::start()
 {
-    std::cout << "Starting " << size() << " worker threads" << std::endl;
+    print_cerr("Starting ", size(), " worker threads");
     std::transform(this->begin(), this->end(), this->begin(), [this](const auto&) {
             // using namespace std::chrono_literals;
             // std::this_thread::sleep_for(0.2s);

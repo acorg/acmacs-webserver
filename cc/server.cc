@@ -8,6 +8,7 @@
 #include "server.hh"
 #include "server-settings.hh"
 #include "server-impl.hh"
+#include "print.hh"
 
 // ----------------------------------------------------------------------
 
@@ -34,7 +35,7 @@ Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::s
 
 Wspp::~Wspp()
 {
-    std::cerr << "~Wspp" << std::endl;
+    print_cerr("~Wspp");
 
 } // Wspp::~Wspp
 
@@ -73,7 +74,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
                                     add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc + filename.string(), std::vector<std::string>{path.string()}));
                                 }
                                 else {
-                                    std::cerr << "No file: " << path.string() << std::endl;
+                                    print_cerr("No file: ", path.string());
                                 }
                             }
                         }
@@ -88,7 +89,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
             }
         }
         catch (std::exception& err) {
-            std::cerr << "Warning: invalid location entry: " <<  err.what() << std::endl;
+            print_cerr("Warning: invalid location entry: ", err.what());
         }
     }
 
@@ -205,7 +206,7 @@ std::shared_ptr<WsppWebsocketLocationHandler> Wspp::create_connected(websocketpp
     const std::string location = connection->get_resource();
     auto connected = mConnected.insert({hdl, find_handler_by_location(location).clone()}).first->second;
     connected->set_server_hdl(this, hdl);
-    std::cerr << std::this_thread::get_id() << " new connected, total: " << mConnected.size() << std::endl;
+    print_cerr("new connected, total: ", std::to_string(mConnected.size()));
     return connected;
 
 } // Wspp::create_connected
@@ -219,7 +220,7 @@ void Wspp::remove_connected(websocketpp::connection_hdl hdl)
     if (connected == mConnected.end())
         throw NoHandlerForConnection{"NoHandlerForConnection (trying to remove it again?)"};
     mConnected.erase(connected);
-    std::cerr << std::this_thread::get_id() << " connected removed, total: " << mConnected.size() << std::endl;
+    print_cerr("connected removed, total: ", std::to_string(mConnected.size()));
 
 } // Wspp::remove_connected
 
@@ -282,7 +283,21 @@ bool WsppHttpLocationHandlerFile::handle(const HttpResource& aResource, WsppHttp
 
 WsppWebsocketLocationHandler::~WsppWebsocketLocationHandler()
 {
-    std::cerr << std::this_thread::get_id() << " ~WsppWebsocketLocationHandler" << std::endl;
+    print_cerr("~WsppWebsocketLocationHandler ", this);
+      // remove message and close handle to avoid calling them for destructed object
+    try {
+        std::unique_lock<decltype(mAccess)> lock{mAccess};
+        try {
+            auto connection = wspp_implementation().connection(mHdl); // may throw ConnectionClosed
+            connection->set_message_handler(websocketpp::connection<websocketpp::config::asio_tls>::message_handler{});
+            connection->set_close_handler(websocketpp::close_handler{});
+        }
+        catch (ConnectionClosed&) {
+        }
+    }
+    catch (std::exception& err) {
+        print_cerr("Error in ~WsppWebsocketLocationHandler: ", err.what(), " ", this);
+    }
 
 } // WsppWebsocketLocationHandler::~WsppWebsocketLocationHandler
 
@@ -311,7 +326,7 @@ void WsppWebsocketLocationHandler::open_queue_element_handler(std::string aMessa
         opening(aMessage, aThread);
     }
     catch (ConnectionClosed&) {
-            // std::cerr << std::this_thread::get_id() << " cannot handle opening: connection already closed" << std::endl;
+            // print_cerr("cannot handle opening: connection already closed");
             // thrown by wspp_implementation when lock is still locked
         closed();
     }
@@ -323,19 +338,19 @@ void WsppWebsocketLocationHandler::open_queue_element_handler(std::string aMessa
 void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg)
 {
         // std::cerr << "MSG (op-code: " << msg->get_opcode() << "): \"" << msg->get_payload() << '"' << std::endl;
-    std::unique_lock<decltype(mAccess)> lock{mAccess};
     try {
+        std::unique_lock<decltype(mAccess)> lock{mAccess};
         auto connected = mWspp->find_connected(hdl);
         try {
             wspp_implementation().queue().push(connected, &WsppWebsocketLocationHandler::message, msg->get_payload());
         }
         catch (ConnectionClosed&) {
-                // std::cerr << std::this_thread::get_id() << " cannot handle message: connection already closed (may it ever happen??)" << std::endl;
+                // print_cerr("cannot handle message: connection already closed (may it ever happen??)");
             closed();
         }
     }
     catch (std::exception& err) {
-        std::cerr << std::this_thread::get_id() << " error handling message: " << err.what() << std::endl;
+        print_cerr("Error handling message: ", err.what());
         closed();
     }
 
@@ -345,7 +360,7 @@ void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, w
 
 void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
 {
-    std::cerr << std::this_thread::get_id() << " connection closed" << std::endl;
+    print_cerr("connection closed ", this);
     try {
         std::unique_lock<decltype(mAccess)> lock{mAccess}; // may throw std::system_error on recursive locking by the same thread (main thread in this case)
         auto connected = mWspp->find_connected(hdl);
@@ -353,14 +368,14 @@ void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
             wspp_implementation().queue().push(connected, &WsppWebsocketLocationHandler::call_after_close);
         }
         catch (ConnectionClosed&) {
-            std::cerr << "on_close event for already closed connection (internal)" << std::endl;
+            print_cerr("on_close event for already closed connection (internal)");
         }
     }
     catch (std::exception& err) {
-        std::cerr << std::this_thread::get_id() << " error handling closing: " << err.what() << std::endl;
+        print_cerr("Error handling closing: ", err.what(), " ", this);
     }
     closed();
-    std::cerr << std::this_thread::get_id() << " connection closed done" << std::endl;
+    print_cerr("connection closed done");
 
 } // WsppWebsocketLocationHandler::on_close
 
@@ -368,7 +383,7 @@ void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
 
 void WsppWebsocketLocationHandler::call_after_close(std::string aMessage, WsppThread& aThread)
 {
-    std::cerr << std::this_thread::get_id() << " call_after_close" << std::endl;
+    print_cerr("call_after_close");
     after_close(aMessage, aThread);
 
 } // WsppWebsocketLocationHandler::call_after_close
@@ -434,7 +449,7 @@ void WsppThread::run()
             mWspp.implementation().pop_call(*this); // pop() blocks waiting for the message from queue
         }
         catch (std::exception& err) {
-            std::cerr << std::this_thread::get_id() << " handling failed: (" << typeid(err).name() << "): " << err.what() << std::endl;
+            print_cerr("handling failed: (", typeid(err).name(), "): ", err.what());
         }
     }
 
@@ -444,7 +459,7 @@ void WsppThread::run()
 
 void WsppThread::initialize()
 {
-    // std::cerr << std::this_thread::get_id() << " start thread" << std::endl;
+    // print_cerr("start thread");
 
 } // WsppThread::initialize
 
