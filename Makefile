@@ -22,10 +22,12 @@ ifeq ($(CLANG),Y)
   WEVERYTHING = -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-padded
   WARNINGS = -Wno-weak-vtables # -Wno-padded
   STD = c++1z
+  GXX = g++
 else
   WEVERYTHING = -Wall -Wextra
   WARNINGS =
-  STD = c++1z
+  GXX = $(shell if g++-7 --version 2>&1; then echo g++-7; else echo g++)
+  STD = $(shell if g++-7 --version 2>&1; then echo c++17; else echo c++1z)
 endif
 
 LIB_DIR = $(ACMACSD_ROOT)/lib
@@ -66,10 +68,10 @@ test: install
 # ----------------------------------------------------------------------
 
 $(ACMACS_WEBSERVER_LIB): $(patsubst %.cc,$(BUILD)/%.o,$(ACMACS_WEBSERVER_SOURCES)) | $(DIST) $(LOCATION_DB_LIB)
-	g++ -shared $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(GXX) -shared $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 $(WSPP_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
-	g++ $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(GXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 # ----------------------------------------------------------------------
 
@@ -83,7 +85,7 @@ distclean: clean
 
 $(BUILD)/%.o: $(CC)/%.cc | $(BUILD)
 	@echo $<
-	@g++ $(CXXFLAGS) -c -o $@ $<
+	@$(GXX) $(CXXFLAGS) -c -o $@ $<
 
 # ----------------------------------------------------------------------
 
@@ -111,10 +113,10 @@ $(BUILD):
 # UWS_LDLIBS = -luWS $$(pkg-config --libs libuv) -lssl -lz
 
 # $(UWS_ACMACS_WEBSERVER): $(patsubst %.cc,$(BUILD)/%.o,$(SOURCES)) | $(DIST)
-#	g++ $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
+#	$(GXX) $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
 
 # $(UWS_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(UWS_TEST_SOURCES)) | $(DIST)
-#	g++ $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
+#	$(GXX) $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
 
 # ======================================================================
 ### Local Variables:
