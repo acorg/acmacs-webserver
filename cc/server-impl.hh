@@ -114,7 +114,7 @@ namespace _wspp_internal
     {
      public:
         WsppImplementation(Wspp& aParent, size_t aNumberOfThreads, WsppThreadMaker aThreadMaker);
-        inline ~WsppImplementation() { print_cerr(std::this_thread::get_id(), " ~WsppImplementation"); }
+          // inline ~WsppImplementation() { print_cerr(std::this_thread::get_id(), " ~WsppImplementation"); }
 
         inline void listen(std::string aHost, std::string aPort)
             {

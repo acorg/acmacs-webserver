@@ -35,7 +35,7 @@ Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::s
 
 Wspp::~Wspp()
 {
-    print_cerr("~Wspp");
+      // print_cerr("~Wspp");
 
 } // Wspp::~Wspp
 
@@ -206,7 +206,7 @@ std::shared_ptr<WsppWebsocketLocationHandler> Wspp::create_connected(websocketpp
     const std::string location = connection->get_resource();
     auto connected = mConnected.insert({hdl, find_handler_by_location(location).clone()}).first->second;
     connected->set_server_hdl(this, hdl);
-    print_cerr("new connected, total: ", std::to_string(mConnected.size()));
+      // print_cerr("new connected, total: ", std::to_string(mConnected.size()));
     return connected;
 
 } // Wspp::create_connected
@@ -220,7 +220,7 @@ void Wspp::remove_connected(websocketpp::connection_hdl hdl)
     if (connected == mConnected.end())
         throw NoHandlerForConnection{"NoHandlerForConnection (trying to remove it again?)"};
     mConnected.erase(connected);
-    print_cerr("connected removed, total: ", std::to_string(mConnected.size()));
+      // print_cerr("connected removed, total: ", std::to_string(mConnected.size()));
 
 } // Wspp::remove_connected
 
@@ -283,7 +283,8 @@ bool WsppHttpLocationHandlerFile::handle(const HttpResource& aResource, WsppHttp
 
 WsppWebsocketLocationHandler::~WsppWebsocketLocationHandler()
 {
-    print_cerr("~WsppWebsocketLocationHandler ", this);
+      // print_cerr("~WsppWebsocketLocationHandler ", this);
+
       // remove message and close handle to avoid calling them for destructed object
     try {
         std::unique_lock<decltype(mAccess)> lock{mAccess};
@@ -360,7 +361,7 @@ void WsppWebsocketLocationHandler::on_message(websocketpp::connection_hdl hdl, w
 
 void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
 {
-    print_cerr("connection closed ", this);
+      // print_cerr("connection closed ", this);
     try {
         std::unique_lock<decltype(mAccess)> lock{mAccess}; // may throw std::system_error on recursive locking by the same thread (main thread in this case)
         auto connected = mWspp->find_connected(hdl);
@@ -375,7 +376,7 @@ void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
         print_cerr("Error handling closing: ", err.what(), " ", this);
     }
     closed();
-    print_cerr("connection closed done");
+      // print_cerr("connection closed done");
 
 } // WsppWebsocketLocationHandler::on_close
 
@@ -383,7 +384,7 @@ void WsppWebsocketLocationHandler::on_close(websocketpp::connection_hdl hdl)
 
 void WsppWebsocketLocationHandler::call_after_close(std::string aMessage, WsppThread& aThread)
 {
-    print_cerr("call_after_close");
+      // print_cerr("call_after_close");
     after_close(aMessage, aThread);
 
 } // WsppWebsocketLocationHandler::call_after_close
