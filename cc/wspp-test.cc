@@ -5,9 +5,9 @@
 #include <thread>
 #include <getopt.h>
 
+#include "acmacs-base/json-writer.hh"
 #include "server.hh"
 #include "server-settings.hh"
-#include "acmacs-base/json-writer.hh" // must be after server-settings.hh
 
 // ----------------------------------------------------------------------
 
