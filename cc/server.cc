@@ -53,14 +53,14 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
 
     for (const auto& location: settings.locations()) {
         try {
-            const auto loc = json_importer::get<std::string>(location, "location", std::string{});
+            const auto loc = from_json::get<std::string>(location, "location", std::string{});
             if (!loc.empty()) {
-                const auto files = json_importer::get(location, "files", std::vector<std::string>{});
+                const auto files = from_json::get(location, "files", std::vector<std::string>{});
                 if (!files.empty()) {
                     add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc, files));
                 }
                 else {
-                    auto dirs = json_importer::get(location, "dirs", std::vector<std::string>{});
+                    auto dirs = from_json::get(location, "dirs", std::vector<std::string>{});
                     if (!dirs.empty() || loc.back() != '/' || dirs[0].back() != '/') {
                         for (const auto& dir: dirs) {
                             using namespace boost::filesystem;

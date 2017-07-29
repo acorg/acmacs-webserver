@@ -3,8 +3,9 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <fstream>
 
-#include "acmacs-base/rapidjson.hh"
+#include "acmacs-base/from-json.hh"
 
 // ----------------------------------------------------------------------
 
@@ -18,20 +19,18 @@ namespace internal
         std::string location;
         std::vector<std::string> files;
 
-        inline std::vector<std::string>& files_ref() { return files; } // for json_importer
+        inline std::vector<std::string>& files_ref() { return files; } // for from_json
     };
 }
 
 class ServerSettings
 {
  public:
-    inline ServerSettings() {}
+    inline ServerSettings(std::string aFilename) : mDoc{std::ifstream{aFilename}} {}
     virtual ~ServerSettings();
 
-    void read(std::string aFilename);
-
-#define SS_FIELD(name, ret_type) inline ret_type name() const { return json_importer::get(mDoc, #name, ret_type{}); }
-#define SS_FIELD_DEFAULT(name, defau) inline decltype(defau) name() const { return json_importer::get(mDoc, #name, defau); }
+#define SS_FIELD(name, ret_type) inline ret_type name() const { return mDoc.get(#name, ret_type{}); }
+#define SS_FIELD_DEFAULT(name, defau) inline decltype(defau) name() const { return mDoc.get(#name, defau); }
 
     SS_FIELD(host, std::string)
     SS_FIELD(port, size_t)
@@ -45,16 +44,14 @@ class ServerSettings
 #undef SS_FIELD
 #undef SS_FIELD_DEFAULT
 
-    inline auto locations() const { return json_importer::get<rapidjson::Value::ConstArray>(mDoc, "locations"); }
+    inline auto locations() const { return mDoc.get_array("locations"); }
 
  protected:
-    rapidjson::Document mDoc;
+    from_json::object mDoc;
 
     // std::vector<internal::Location> locations;
 
 }; // class ServerSettings
-
-// ----------------------------------------------------------------------
 
 // ----------------------------------------------------------------------
 /// Local Variables:
