@@ -26,7 +26,7 @@ namespace internal
 class ServerSettings
 {
  public:
-    inline ServerSettings(std::string aFilename) : mDoc{std::ifstream{aFilename}} {}
+    inline ServerSettings(std::string aFilename) : mDoc{std::ifstream{aFilename}, aFilename} {}
     virtual ~ServerSettings();
 
 #define SS_FIELD(name, ret_type) inline ret_type name() const { return mDoc.get(#name, ret_type{}); }
