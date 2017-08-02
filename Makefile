@@ -50,6 +50,9 @@ install: check-acmacsd-root $(ACMACS_WEBSERVER_LIB) $(WSPP_TEST)
 test: install
 	test/test
 
+rtags:
+	make -nk | /usr/local/bin/rc --compile - || true
+
 # ----------------------------------------------------------------------
 
 -include $(BUILD)/*.d
@@ -57,10 +60,10 @@ test: install
 # ----------------------------------------------------------------------
 
 $(ACMACS_WEBSERVER_LIB): $(patsubst %.cc,$(BUILD)/%.o,$(ACMACS_WEBSERVER_SOURCES)) | $(DIST) $(LOCATION_DB_LIB)
-	$(GXX) -shared $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(CXX) -shared $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 $(WSPP_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
-	$(GXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 # ----------------------------------------------------------------------
 
@@ -74,7 +77,7 @@ distclean: clean
 
 $(BUILD)/%.o: $(CC)/%.cc | $(BUILD)
 	@echo $<
-	@$(GXX) $(CXXFLAGS) -c -o $@ $<
+	@$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 # ----------------------------------------------------------------------
 
@@ -102,10 +105,10 @@ $(BUILD):
 # UWS_LDLIBS = -luWS $$(pkg-config --libs libuv) -lssl -lz
 
 # $(UWS_ACMACS_WEBSERVER): $(patsubst %.cc,$(BUILD)/%.o,$(SOURCES)) | $(DIST)
-#	$(GXX) $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
+#	$(CXX) $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
 
 # $(UWS_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(UWS_TEST_SOURCES)) | $(DIST)
-#	$(GXX) $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
+#	$(CXX) $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
 
 # ======================================================================
 ### Local Variables:
