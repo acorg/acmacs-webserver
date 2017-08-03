@@ -249,6 +249,7 @@ void Wspp::stop_listening()
 
 bool WsppHttpLocationHandler404::handle(const HttpResource& aResource, WsppHttpResponseData& aResponse)
 {
+    std::cerr << "Error 404: " << aResource.location() << std::endl;
     aResponse.body = "<!doctype html><html><head><title>Error 404 (Resource not found)</title><body><h1>Error 404</h1><p>The requested URL " + aResource.location() + " was not found on this server.</p></body></head></html>";
     aResponse.status = websocketpp::http::status_code::not_found;
     return true;
