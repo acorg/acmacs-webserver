@@ -13,7 +13,7 @@ ACMACS_WEBSERVER_LIB = $(DIST)/libacmacswebserver.so
 WSPP_TEST = $(DIST)/wspp-test
 WSPP_TEST_SOURCES = wspp-test.cc server.cc server-impl.cc server-settings.cc
 
-LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $$(pkg-config --libs libssl) $$(pkg-config --libs liblzma) $$(pkg-config --libs libcrypto) -lboost_filesystem -lboost_system -lpthread
+LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $(shell pkg-config --libs libssl) $(shell pkg-config --libs liblzma) $(shell pkg-config --libs libcrypto) -lboost_filesystem -lboost_system -lpthread
 
 # ----------------------------------------------------------------------
 
@@ -26,11 +26,11 @@ PROFILE = # -pg
 CXXFLAGS = -g -MMD $(OPTIMIZATION) $(PROFILE) -fPIC -std=$(STD) $(WEVERYTHING) $(WARNINGS) -Icc -I$(BUILD)/include -I$(ACMACSD_ROOT)/include $(PKG_INCLUDES)
 LDFLAGS = $(OPTIMIZATION) $(PROFILE)
 
-PKG_INCLUDES = $$(pkg-config --cflags liblzma) $$(pkg-config --cflags libcrypto)
+PKG_INCLUDES = $(shell pkg-config --cflags liblzma) $(shell pkg-config --cflags libcrypto)
 
 ifeq ($(shell uname -s),Darwin)
 PKG_INCLUDES += -I/usr/local/opt/openssl/include
-# $$(pkg-config --cflags libuv)
+# $(shell pkg-config --cflags libuv)
 endif
 
 # ----------------------------------------------------------------------
@@ -51,7 +51,7 @@ test: install
 	test/test
 
 rtags:
-	make -nk | /usr/local/bin/rc --compile - || true
+	make -nkB | /usr/local/bin/rc --compile - || true
 
 # ----------------------------------------------------------------------
 
@@ -102,7 +102,7 @@ $(BUILD):
 
 # UWS_SOURCES = uws/acmacs-webserver.cc http-request-dispatcher.cc
 # UWS_TEST_SOURCES = uws/uws-test.cc uws/http-request-dispatcher.cc
-# UWS_LDLIBS = -luWS $$(pkg-config --libs libuv) -lssl -lz
+# UWS_LDLIBS = -luWS $(shell pkg-config --libs libuv) -lssl -lz
 
 # $(UWS_ACMACS_WEBSERVER): $(patsubst %.cc,$(BUILD)/%.o,$(SOURCES)) | $(DIST)
 #	$(CXX) $(LDFLAGS) -o $@ $^ $(UWS_LDLIBS) $(LDLIBS)
