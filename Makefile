@@ -50,8 +50,7 @@ install: check-acmacsd-root $(ACMACS_WEBSERVER_LIB) $(WSPP_TEST)
 test: install
 	test/test
 
-rtags:
-	make -nkB | /usr/local/bin/rc --compile - || true
+include $(ACMACSD_ROOT)/share/Makefile.rtags
 
 # ----------------------------------------------------------------------
 
