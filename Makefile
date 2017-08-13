@@ -18,6 +18,7 @@ LDLIBS = -L$(LIB_DIR) -L/usr/local/opt/openssl/lib $(shell pkg-config --libs lib
 # ----------------------------------------------------------------------
 
 include $(ACMACSD_ROOT)/share/Makefile.g++
+include $(ACMACSD_ROOT)/share/Makefile.dist-build.vars
 
 LIB_DIR = $(ACMACSD_ROOT)/lib
 
@@ -35,8 +36,6 @@ endif
 
 # ----------------------------------------------------------------------
 
-BUILD = build
-DIST = $(abspath dist)
 CC = cc
 
 all: check-acmacsd-root $(ACMACS_WEBSERVER_LIB) $(WSPP_TEST)
@@ -66,14 +65,6 @@ $(WSPP_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
 
 # ----------------------------------------------------------------------
 
-clean:
-	rm -rf $(DIST) $(BUILD)/*.o $(BUILD)/*.d
-
-distclean: clean
-	rm -rf $(BUILD)
-
-# ----------------------------------------------------------------------
-
 $(BUILD)/%.o: $(CC)/%.cc | $(BUILD)
 	@echo $<
 	@$(CXX) $(CXXFLAGS) -c -o $@ $<
@@ -85,11 +76,7 @@ ifndef ACMACSD_ROOT
 	$(error ACMACSD_ROOT is not set)
 endif
 
-$(DIST):
-	mkdir -p $(DIST)
-
-$(BUILD):
-	mkdir -p $(BUILD)
+include $(ACMACSD_ROOT)/share/Makefile.dist-build.rules
 
 .PHONY: check-acmacsd-root
 
