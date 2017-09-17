@@ -12,7 +12,7 @@ ACMACS_WEBSERVER_LIB = $(DIST)/libacmacswebserver.so
 WSPP_TEST = $(DIST)/wspp-test
 WSPP_TEST_SOURCES = wspp-test.cc server.cc server-impl.cc server-settings.cc
 
-LDLIBS = -L$(AD_LIB) -L/usr/local/opt/openssl/lib $(shell pkg-config --libs libssl) $(shell pkg-config --libs liblzma) $(shell pkg-config --libs libcrypto)
+LDLIBS = -L$(AD_LIB) -L/usr/local/opt/openssl/lib $(shell pkg-config --libs libssl) $(shell pkg-config --libs liblzma) $(shell pkg-config --libs libcrypto) -lboost_system -lpthread $(FS_LIB)
 
 # ----------------------------------------------------------------------
 

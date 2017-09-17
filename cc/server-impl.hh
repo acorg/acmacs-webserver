@@ -20,7 +20,6 @@ namespace std { template <typename T> using auto_ptr = unique_ptr<T>; }
 #endif
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/server.hpp>
-#include <boost/filesystem.hpp>
 #pragma GCC diagnostic pop
 
 #include "print.hh"

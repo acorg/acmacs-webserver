@@ -4,6 +4,7 @@
 #include <typeinfo>
 
 #include "acmacs-base/stream.hh"
+#include "acmacs-base/filesystem.hh"
 
 #include "server.hh"
 #include "server-settings.hh"
@@ -63,8 +64,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
                     auto dirs = from_json::get(location, "dirs", std::vector<std::string>{});
                     if (!dirs.empty() || loc.back() != '/' || dirs[0].back() != '/') {
                         for (const auto& dir: dirs) {
-                            using namespace boost::filesystem;
-                            for (auto& entry: directory_iterator(dir)) {
+                            for (auto& entry: fs::directory_iterator(dir)) {
                                 auto& path = entry.path();
                                 if (exists(path)) {
                                     auto filename = path.filename();
