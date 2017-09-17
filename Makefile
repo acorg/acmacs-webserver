@@ -1,6 +1,5 @@
 # -*- Makefile -*-
 # Eugene Skepner 2017
-
 # ----------------------------------------------------------------------
 
 MAKEFLAGS = -w
@@ -13,17 +12,14 @@ ACMACS_WEBSERVER_LIB = $(DIST)/libacmacswebserver.so
 WSPP_TEST = $(DIST)/wspp-test
 WSPP_TEST_SOURCES = wspp-test.cc server.cc server-impl.cc server-settings.cc
 
-LDLIBS = -L$(AD_LIB) -L/usr/local/opt/openssl/lib $(shell pkg-config --libs libssl) $(shell pkg-config --libs liblzma) $(shell pkg-config --libs libcrypto) -lboost_filesystem -lboost_system -lpthread
+LDLIBS = -L$(AD_LIB) -L/usr/local/opt/openssl/lib $(shell pkg-config --libs libssl) $(shell pkg-config --libs liblzma) $(shell pkg-config --libs libcrypto)
 
 # ----------------------------------------------------------------------
 
-TARGET_ROOT=$(shell if [ -f /Volumes/rdisk/ramdisk-id ]; then echo /Volumes/rdisk/AD; else echo $(ACMACSD_ROOT); fi)
-include $(TARGET_ROOT)/share/Makefile.g++
-include $(TARGET_ROOT)/share/Makefile.dist-build.vars
+include $(ACMACSD_ROOT)/share/makefiles/Makefile.g++
+include $(ACMACSD_ROOT)/share/makefiles/Makefile.dist-build.vars
 
-OPTIMIZATION = -O3 #-fvisibility=hidden -flto
-PROFILE = # -pg
-CXXFLAGS = -g -MMD $(OPTIMIZATION) $(PROFILE) -fPIC -std=$(STD) $(WEVERYTHING) $(WARNINGS) -Icc -I$(AD_INCLUDE) $(PKG_INCLUDES)
+CXXFLAGS = -g -MMD $(OPTIMIZATION) $(PROFILE) -fPIC -std=$(STD) $(WARNINGS) -Icc -I$(AD_INCLUDE) $(PKG_INCLUDES)
 LDFLAGS = $(OPTIMIZATION) $(PROFILE)
 
 PKG_INCLUDES = $(shell pkg-config --cflags liblzma) $(shell pkg-config --cflags libcrypto)
@@ -48,11 +44,11 @@ install: check-acmacsd-root $(ACMACS_WEBSERVER_LIB) $(WSPP_TEST)
 test: install
 	test/test
 
-include $(AD_SHARE)/Makefile.rtags
-
 # ----------------------------------------------------------------------
 
 -include $(BUILD)/*.d
+include $(ACMACSD_ROOT)/share/makefiles/Makefile.dist-build.rules
+include $(ACMACSD_ROOT)/share/makefiles/Makefile.rtags
 
 # ----------------------------------------------------------------------
 
@@ -63,16 +59,6 @@ $(ACMACS_WEBSERVER_LIB): $(patsubst %.cc,$(BUILD)/%.o,$(ACMACS_WEBSERVER_SOURCES
 $(WSPP_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
 	@echo "LINK       " $@ # '<--' $^
 	@$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
-
-# ----------------------------------------------------------------------
-
-$(BUILD)/%.o: $(CC)/%.cc | $(BUILD)
-	@echo $(CXX_NAME) $<
-	@$(CXX) $(CXXFLAGS) -c -o $@ $<
-
-# ----------------------------------------------------------------------
-
-include $(AD_SHARE)/Makefile.dist-build.rules
 
 # ======================================================================
 ### Local Variables:
