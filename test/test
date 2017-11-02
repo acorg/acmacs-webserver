@@ -22,6 +22,6 @@ trap failed ERR
 
 # ======================================================================
 
-export LD_LIBRARY_PATH="$HOME"/AD/lib
+export LD_LIBRARY_PATH="$ACMACSD_ROOT"/lib
 cd "$TESTDIR"
 # ../bin/acmacs-chart-info ./test.ace
