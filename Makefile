@@ -53,11 +53,11 @@ include $(ACMACSD_ROOT)/share/makefiles/Makefile.rtags
 # ----------------------------------------------------------------------
 
 $(ACMACS_WEBSERVER_LIB): $(patsubst %.cc,$(BUILD)/%.o,$(ACMACS_WEBSERVER_SOURCES)) | $(DIST) $(LOCATION_DB_LIB)
-	@echo "SHARED     " $@ # '<--' $^
+	@printf "%-16s %s\n" "SHARED" $@
 	@$(CXX) -shared $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 $(WSPP_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
-	@echo "LINK       " $@ # '<--' $^
+	@printf "%-16s %s\n" "LINK" $@
 	@$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 # ======================================================================
