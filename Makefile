@@ -64,7 +64,7 @@ $(ACMACS_WEBSERVER_LIB): $(patsubst %.cc,$(BUILD)/%.o,$(ACMACS_WEBSERVER_SOURCES
 	@printf "%-16s %s\n" "SHARED" $@
 	@$(call make_shared,$(ACMACS_WEBSERVER_LIB_NAME),$(ACMACS_WEBSERVER_LIB_MAJOR),$(ACMACS_WEBSERVER_LIB_MINOR)) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-$(WSPP_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
+$(DIST)/wspp-test: $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
 	@printf "%-16s %s\n" "LINK" $@
 	@$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
