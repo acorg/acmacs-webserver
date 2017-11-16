@@ -6,11 +6,20 @@ MAKEFLAGS = -w
 
 # ----------------------------------------------------------------------
 
+TARGETS = \
+	$(ACMACS_WEBSERVER_LIB) \
+	$(ACMACS_WEBSERVER_PY_LIB) \
+	$(DIST)/wspp-test
+
 ACMACS_WEBSERVER_SOURCES = server.cc server-impl.cc server-settings.cc
 ACMACS_WEBSERVER_LIB = $(DIST)/libacmacswebserver.so
 
-WSPP_TEST = $(DIST)/wspp-test
 WSPP_TEST_SOURCES = wspp-test.cc server.cc server-impl.cc server-settings.cc
+
+ACMACS_WEBSERVER_LIB_MAJOR = 1
+ACMACS_WEBSERVER_LIB_MINOR = 0
+ACMACS_WEBSERVER_LIB_NAME = libacmacswebserver
+ACMACS_WEBSERVER_LIB = $(DIST)/$(call shared_lib_name,$(ACMACS_WEBSERVER_LIB_NAME),$(ACMACS_WEBSERVER_LIB_MAJOR),$(ACMACS_WEBSERVER_LIB_MINOR))
 
 LDLIBS = -L$(AD_LIB) -L/usr/local/opt/openssl/lib $(shell pkg-config --libs libssl) $(shell pkg-config --libs liblzma) $(shell pkg-config --libs libcrypto) -lboost_system -lpthread $(FS_LIB)
 
@@ -33,11 +42,10 @@ endif
 
 CC = cc
 
-all: check-acmacsd-root $(ACMACS_WEBSERVER_LIB) $(WSPP_TEST)
+all: check-acmacsd-root $(TARGETS)
 
-install: check-acmacsd-root $(ACMACS_WEBSERVER_LIB) $(WSPP_TEST)
-	ln -sf $(ACMACS_WEBSERVER_LIB) $(AD_LIB)
-	if [ $$(uname) = "Darwin" ]; then /usr/bin/install_name_tool -id $(AD_LIB)/$(notdir $(ACMACS_WEBSERVER_LIB)) $(AD_LIB)/$(notdir $(ACMACS_WEBSERVER_LIB)); fi
+install: check-acmacsd-root $(TARGETS)
+	$(call install_lib,$(ACMACS_WEBSERVER_LIB))
 	if [ ! -d $(AD_INCLUDE)/acmacs-webserver ]; then mkdir $(AD_INCLUDE)/acmacs-webserver; fi
 	ln -sf $(abspath cc)/*.hh $(AD_INCLUDE)/acmacs-webserver
 
@@ -52,9 +60,9 @@ include $(ACMACSD_ROOT)/share/makefiles/Makefile.rtags
 
 # ----------------------------------------------------------------------
 
-$(ACMACS_WEBSERVER_LIB): $(patsubst %.cc,$(BUILD)/%.o,$(ACMACS_WEBSERVER_SOURCES)) | $(DIST) $(LOCATION_DB_LIB)
+$(ACMACS_WEBSERVER_LIB): $(patsubst %.cc,$(BUILD)/%.o,$(ACMACS_WEBSERVER_SOURCES)) | $(DIST)
 	@printf "%-16s %s\n" "SHARED" $@
-	@$(CXX) -shared $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	@$(call make_shared,$(ACMACS_WEBSERVER_LIB_NAME),$(ACMACS_WEBSERVER_LIB_MAJOR),$(ACMACS_WEBSERVER_LIB_MINOR)) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 $(WSPP_TEST): $(patsubst %.cc,$(BUILD)/%.o,$(WSPP_TEST_SOURCES)) | $(DIST)
 	@printf "%-16s %s\n" "LINK" $@
