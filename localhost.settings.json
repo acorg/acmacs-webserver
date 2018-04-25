@@ -9,6 +9,7 @@
     "log_access": "/tmp/wspp.access.log",
     "log_error": "/tmp/wspp.error.log",
     "locations": [
+        {"location": "/ads/f/myscript.js", "files": ["f/myscript.js", "f/myscript.js.gz"]},
         {"location": "/f/myscript.js", "files": ["f/myscript.js", "f/myscript.js.gz"]},
         {"location": "/favicon.ico", "files": ["favicon.ico"]}
         ]
