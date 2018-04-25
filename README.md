@@ -3,6 +3,8 @@ Lightweight multi-threaded webserver with websockets support
 
 # Apache httpd.conf
 
+enable mod\_ssl, mod\_proxy, mod\_proxy\_http, mod\_proxy\_wstunnel
+
 ```xml
 <IfModule mod_ssl.c>
     <VirtualHost *:443>
