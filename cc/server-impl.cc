@@ -23,6 +23,37 @@ WsppImplementation::WsppImplementation(Wspp& aParent, size_t aNumberOfThreads, W
 
 // ----------------------------------------------------------------------
 
+void WsppImplementation::listen(std::string aHost, std::string aPort)
+{
+    constexpr const size_t max_attempts = 30;
+    for (size_t attempt = 1;; ++attempt) {
+        try {
+            mServer.listen(aHost, aPort);
+            if (attempt > 1)
+                std::cerr << std::endl;
+            print_cerr("https://", aHost, ':', aPort);
+            break;
+        }
+        catch (std::exception& err) {
+            if (attempt < max_attempts) {
+                using namespace std::chrono_literals;
+                if (attempt == 1)
+                    std::cerr << "Cannot listen  at " << aHost << ':' << aPort << ": " << err.what() << ", retrying in 3s, attempt: " << attempt;
+                else
+                    std::cerr << ' ' << attempt;
+                std::this_thread::sleep_for(3s);
+            }
+            else {
+                print_cerr("Cannot listen  at ", aHost, ':', aPort, ": ", err.what(), ", exiting after ", attempt);
+                exit(1);
+            }
+        }
+    }
+
+} // WsppImplementation::listen
+
+// ----------------------------------------------------------------------
+
 WsppImplementation::context_ptr WsppImplementation::on_tls_init(websocketpp::connection_hdl /*hdl*/)
 {
       // See https://wiki.mozilla.org/Security/Server_Side_TLS for more details about
