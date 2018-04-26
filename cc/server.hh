@@ -139,7 +139,7 @@ class WsppHttpLocationHandler
 class WsppHttpLocationHandler404 : public WsppHttpLocationHandler
 {
  public:
-    virtual bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse);
+    bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse) override;
 
 }; // class WsppHttpLocationHandler404
 
@@ -151,7 +151,7 @@ class WsppHttpLocationHandlerFile : public WsppHttpLocationHandler
     template <typename Iter> WsppHttpLocationHandlerFile(std::string aLocation, Iter first_file, Iter last_file)
         : mLocation{aLocation}, mFiles(first_file, last_file) {}
 
-    virtual bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse);
+    bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse) override;
 
  private:
     std::string mLocation;

@@ -269,6 +269,12 @@ bool WsppHttpLocationHandlerFile::handle(const HttpResource& aResource, WsppHttp
                 aResponse.body.reserve(static_cast<size_t>(file.tellg()));
                 file.seekg(0, std::ios::beg);
                 aResponse.body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                if (filename.substr(filename.size() - 3) == ".js" || filename.substr(filename.size() - 6) == ".js.gz")
+                    aResponse.append_header("Content-Type", "application/javascript; charset=utf-8");
+                else if (filename.substr(filename.size() - 4) == ".css" || filename.substr(filename.size() - 7) == ".css.gz")
+                    aResponse.append_header("Content-Type", "text/css");
+                else if (filename.substr(filename.size() - 5) == ".html")
+                    aResponse.append_header("Content-Type", "text/html; charset=utf-8");
                 if (filename.substr(filename.size() - 3) == ".gz")
                     aResponse.append_header("Content-Encoding", "gzip");
                 handled = true;
