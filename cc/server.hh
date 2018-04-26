@@ -38,10 +38,10 @@ class Wspp
     Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::string aCerficateChainFile, std::string aPrivateKeyFile, std::string aTmpDhFile, WsppThreadMaker aThreadMaker);
     ~Wspp();
 
-    inline void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
-    inline void add_location_handler(std::shared_ptr<WsppWebsocketLocationHandler> aHandler) { mWebsocketLocationHandlers.push_back(aHandler); }
+    void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
+    void add_location_handler(std::shared_ptr<WsppWebsocketLocationHandler> aHandler) { mWebsocketLocationHandlers.push_back(aHandler); }
     void setup_logging(std::string access_log_filename = std::string{}, std::string error_log_filename = std::string{});
-    inline _wspp_internal::WsppImplementation& implementation() { return *impl; }
+    _wspp_internal::WsppImplementation& implementation() { return *impl; }
     void stop_listening();
 
     void run();
@@ -82,7 +82,7 @@ class WsppThread
     static inline WsppThread* make(Wspp& aWspp) { return new WsppThread{aWspp}; }
 
  protected:
-    inline WsppThread(Wspp& aWspp) : mWspp{aWspp}, mThread{std::bind(&WsppThread::run, this)} {}
+    WsppThread(Wspp& aWspp) : mWspp{aWspp}, mThread{std::bind(&WsppThread::run, this)} {}
 
     virtual void initialize();
 
@@ -103,8 +103,8 @@ class HttpResource
 
     HttpResource(std::string aResource);
 
-    inline std::string location() const { return mLocation; }
-    inline const Argv& argv() const { return mArgv; }
+    std::string location() const { return mLocation; }
+    const Argv& argv() const { return mArgv; }
 
  private:
     std::string mLocation;
@@ -117,8 +117,8 @@ class HttpResource
 class WsppHttpResponseData
 {
  public:
-    inline WsppHttpResponseData(websocketpp::http::status_code::value aStatus = websocketpp::http::status_code::ok) : status(aStatus) {}
-    inline void append_header(std::string key, std::string value) { headers.emplace_back(key, value); }
+    WsppHttpResponseData(websocketpp::http::status_code::value aStatus = websocketpp::http::status_code::ok) : status(aStatus) {}
+    void append_header(std::string key, std::string value) { headers.emplace_back(key, value); }
 
     std::vector<std::pair<std::string, std::string>> headers;
     std::string body;
@@ -129,8 +129,8 @@ class WsppHttpResponseData
 class WsppHttpLocationHandler
 {
  public:
-    inline WsppHttpLocationHandler() = default;
-    virtual inline ~WsppHttpLocationHandler() {}
+    WsppHttpLocationHandler() = default;
+    virtual ~WsppHttpLocationHandler() = default;
 
     virtual bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse) = 0;
 
@@ -146,8 +146,10 @@ class WsppHttpLocationHandler404 : public WsppHttpLocationHandler
 class WsppHttpLocationHandlerFile : public WsppHttpLocationHandler
 {
  public:
-    inline WsppHttpLocationHandlerFile(std::string aLocation, const std::vector<std::string>& aFiles)
+    WsppHttpLocationHandlerFile(std::string aLocation, const std::vector<std::string>& aFiles)
         : mLocation{aLocation}, mFiles{aFiles} {}
+    template <typename Iter> WsppHttpLocationHandlerFile(std::string aLocation, Iter first_file, Iter last_file)
+        : mLocation{aLocation}, mFiles(first_file, last_file) {}
 
     virtual bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse);
 
@@ -162,8 +164,8 @@ class WsppHttpLocationHandlerFile : public WsppHttpLocationHandler
 class WsppWebsocketLocationHandler
 {
  public:
-    inline WsppWebsocketLocationHandler() : mWspp{nullptr} {}
-    inline WsppWebsocketLocationHandler(const WsppWebsocketLocationHandler& aSrc) : mWspp{aSrc.mWspp} {}
+    WsppWebsocketLocationHandler() : mWspp{nullptr} {}
+    WsppWebsocketLocationHandler(const WsppWebsocketLocationHandler& aSrc) : mWspp{aSrc.mWspp} {}
     virtual ~WsppWebsocketLocationHandler();
 
     void send(std::string aMessage, websocketpp::frame::opcode::value op_code = websocketpp::frame::opcode::text);
@@ -187,13 +189,13 @@ class WsppWebsocketLocationHandler
 
     class ConnectionClosed : public std::exception { public: using std::exception::exception; };
 
-    inline void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { std::unique_lock<decltype(mAccess)> lock{mAccess}; mWspp = aWspp; mHdl = aHdl; }
+    void set_server_hdl(Wspp* aWspp, websocketpp::connection_hdl aHdl) { std::unique_lock<decltype(mAccess)> lock{mAccess}; mWspp = aWspp; mHdl = aHdl; }
     void closed(); // may call (indirectly) destructor for this, caller needs to lock mAccess
     void open_queue_element_handler(std::string, WsppThread& aThread);
     void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg);
     void on_close(websocketpp::connection_hdl hdl);
     void call_after_close(std::string aMessage, WsppThread& aThread);
-    inline _wspp_internal::WsppImplementation& wspp_implementation() // caller needs to lock mAccess
+    _wspp_internal::WsppImplementation& wspp_implementation() // caller needs to lock mAccess
         {
             if (!mWspp || mHdl.expired())
                 throw ConnectionClosed{};

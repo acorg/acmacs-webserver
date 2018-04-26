@@ -5,7 +5,7 @@
 #include <thread>
 #include <fstream>
 
-#include "acmacs-base/from-json.hh"
+#include "acmacs-base/rjson.hh"
 
 // ----------------------------------------------------------------------
 
@@ -14,42 +14,34 @@ namespace internal
     class Location
     {
      public:
-        inline Location() {}
+        Location() {}
 
         std::string location;
         std::vector<std::string> files;
 
-        inline std::vector<std::string>& files_ref() { return files; } // for from_json
+        std::vector<std::string>& files_ref() { return files; } // for from_json
     };
 }
 
 class ServerSettings
 {
  public:
-    inline ServerSettings(std::string aFilename) : mDoc{std::ifstream{aFilename}, aFilename} {}
-    virtual ~ServerSettings();
+    ServerSettings(std::string aFilename) : doc_{rjson::parse_file(aFilename)} {}
+    virtual ~ServerSettings() = default;
 
-#define SS_FIELD(name, ret_type) inline ret_type name() const { return mDoc.get(#name, ret_type{}); }
-#define SS_FIELD_DEFAULT(name, defau) inline decltype(defau) name() const { return mDoc.get(#name, defau); }
+    std::string host() const { return doc_.get_or_default("host", ""); }
+    size_t port() const { return doc_.get_or_default("port", 0UL); }
+    auto number_of_threads() const { return doc_.get_or_default("number_of_threads", std::thread::hardware_concurrency()); }
+    std::string certificate_chain_file() const { return doc_.get_or_default("certificate_chain_file", ""); }
+    std::string private_key_file() const { return doc_.get_or_default("private_key_file", ""); }
+    std::string tmp_dh_file() const { return doc_.get_or_default("tmp_dh_file", ""); }
+    std::string log_access() const { return doc_.get_or_default("log_access", ""); }
+    std::string log_error() const { return doc_.get_or_default("log_error", ""); }
 
-    SS_FIELD(host, std::string)
-    SS_FIELD(port, size_t)
-    SS_FIELD_DEFAULT(number_of_threads, std::thread::hardware_concurrency())
-    SS_FIELD(certificate_chain_file, std::string)
-    SS_FIELD(private_key_file, std::string)
-    SS_FIELD(tmp_dh_file, std::string)
-    SS_FIELD(log_access, std::string)
-    SS_FIELD(log_error, std::string)
-
-#undef SS_FIELD
-#undef SS_FIELD_DEFAULT
-
-    inline auto locations() const { return mDoc.get_array("locations"); }
+    rjson::array locations() const { return doc_.get_or_empty_array("locations"); }
 
  protected:
-    from_json::object mDoc;
-
-    // std::vector<internal::Location> locations;
+    rjson::object doc_;
 
 }; // class ServerSettings
 

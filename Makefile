@@ -14,14 +14,19 @@ TARGETS = \
 ACMACS_WEBSERVER_SOURCES = server.cc server-impl.cc server-settings.cc
 ACMACS_WEBSERVER_LIB = $(DIST)/libacmacswebserver.so
 
-WSPP_TEST_SOURCES = wspp-test.cc server.cc server-impl.cc server-settings.cc
+WSPP_TEST_SOURCES = wspp-test.cc server.cc server-impl.cc
 
 ACMACS_WEBSERVER_LIB_MAJOR = 1
 ACMACS_WEBSERVER_LIB_MINOR = 0
 ACMACS_WEBSERVER_LIB_NAME = libacmacswebserver
 ACMACS_WEBSERVER_LIB = $(DIST)/$(call shared_lib_name,$(ACMACS_WEBSERVER_LIB_NAME),$(ACMACS_WEBSERVER_LIB_MAJOR),$(ACMACS_WEBSERVER_LIB_MINOR))
 
-LDLIBS = -L$(AD_LIB) -L/usr/local/opt/openssl/lib $(shell pkg-config --libs libssl) $(shell pkg-config --libs liblzma) $(shell pkg-config --libs libcrypto) -lboost_system -lpthread $(FS_LIB)
+LDLIBS = \
+  $(AD_LIB)/$(call shared_lib_name,libacmacsbase,1,0) \
+  -L/usr/local/opt/openssl/lib $(shell pkg-config --libs libssl) \
+  $(shell pkg-config --libs liblzma) \
+  $(shell pkg-config --libs libcrypto) \
+  -lboost_system -lpthread $(FS_LIB)
 
 # ----------------------------------------------------------------------
 

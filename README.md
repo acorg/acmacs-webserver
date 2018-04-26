@@ -27,6 +27,9 @@ enable mod\_ssl, mod\_proxy, mod\_proxy\_http, mod\_proxy\_wstunnel
             ProxyPass "/ads-ws/" "wss://localhost:10067/ads-ws"
         </IfModule>
 
+        # to properly handle python3 cgitb output
+        HttpProtocolOptions Unsafe
+
     </VirtualHost>
 </IfModule>
 ```

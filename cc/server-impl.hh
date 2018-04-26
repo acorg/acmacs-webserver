@@ -12,6 +12,7 @@
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wtautological-type-limit-compare"
+#pragma GCC diagnostic ignored "-Wtautological-unsigned-enum-zero-compare"
 #pragma GCC diagnostic ignored "-Wmissing-noreturn"
 
 // websocketpp has "using std::auto_ptr" not available in C++17

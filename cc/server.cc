@@ -54,17 +54,17 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
 
     for (const auto& location: settings.locations()) {
         try {
-            const auto loc = from_json::get<std::string>(location, "location", std::string{});
+            const auto loc = location.get_or_default("location", "");
             if (!loc.empty()) {
-                const auto files = from_json::get(location, "files", std::vector<std::string>{});
+                const auto files = location.get_or_empty_array("files");
                 if (!files.empty()) {
-                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc, files));
+                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc, files.begin(), files.end()));
                 }
                 else {
-                    auto dirs = from_json::get(location, "dirs", std::vector<std::string>{});
-                    if (!dirs.empty() || loc.back() != '/' || dirs[0].back() != '/') {
+                    const auto dirs = location.get_or_empty_array("dirs");
+                    if (!dirs.empty() || loc.back() != '/' || dirs[0].str().back() != '/') {
                         for (const auto& dir: dirs) {
-                            for (auto& entry: fs::directory_iterator(dir)) {
+                            for (auto& entry: fs::directory_iterator(dir.str())) {
                                 auto& path = entry.path();
                                 if (exists(path)) {
                                     auto filename = path.filename();
