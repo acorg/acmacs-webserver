@@ -11,7 +11,7 @@ TARGETS = \
 	$(ACMACS_WEBSERVER_PY_LIB) \
 	$(DIST)/wspp-test
 
-ACMACS_WEBSERVER_SOURCES = server.cc server-impl.cc server-settings.cc
+ACMACS_WEBSERVER_SOURCES = server.cc server-impl.cc
 ACMACS_WEBSERVER_LIB = $(DIST)/libacmacswebserver.so
 
 WSPP_TEST_SOURCES = wspp-test.cc server.cc server-impl.cc
@@ -26,7 +26,7 @@ LDLIBS = \
   -L/usr/local/opt/openssl/lib $(shell pkg-config --libs libssl) \
   $(shell pkg-config --libs liblzma) \
   $(shell pkg-config --libs libcrypto) \
-  -lboost_system -lpthread $(FS_LIB)
+  -L$(AD_LIB) -lboost_system -lpthread $(FS_LIB)
 
 # ----------------------------------------------------------------------
 
