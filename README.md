@@ -24,8 +24,12 @@ enable mod\_ssl, mod\_proxy, mod\_proxy\_http, mod\_proxy\_wstunnel
         </IfModule>
 
         <IfModule proxy_wstunnel_module>
-            ProxyPass "/ads-ws/" "wss://localhost:10067/ads-ws"
+            ProxyPass "/acmacs-api" "wss://localhost:10067/acmacs-api"
         </IfModule>
+
+        <Location "/js">
+            Require all granted
+        </Location>
 
         # to properly handle python3 cgitb output
         HttpProtocolOptions Unsafe
