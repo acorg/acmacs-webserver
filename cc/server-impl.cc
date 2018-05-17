@@ -5,6 +5,49 @@ using namespace _wspp_internal;
 
 // ----------------------------------------------------------------------
 
+void Queue::push(std::shared_ptr<WsppWebsocketLocationHandler> aConnected, QueueElement::Handler aHandler, std::string aMessage)
+{
+    std::queue<QueueElement>::emplace(aConnected, aHandler, aMessage);
+      // print_cerr(std::this_thread::get_id(), " queue::push after size: ", std::queue<QueueElement>::size());
+    data_available();
+
+} // Queue::push
+
+// ----------------------------------------------------------------------
+
+QueueElement Queue::pop()
+{
+    wait_for_data();
+    // print_cerr(std::this_thread::get_id(), " queue::pop before size: ", std::queue<QueueElement>::size());
+    const QueueElement result = std::queue<QueueElement>::front();
+    std::queue<QueueElement>::pop();
+    // print_cerr(std::this_thread::get_id(), " queue::pop after size: ", std::queue<QueueElement>::size());
+    return result;
+
+} // Queue::pop
+
+// ----------------------------------------------------------------------
+
+void Queue::data_available()
+{
+    std::unique_lock<std::mutex> lock{mMutexForNotifier};
+    mNotifier.notify_one();
+
+} // Queue::data_available
+
+// ----------------------------------------------------------------------
+
+void Queue::wait_for_data()
+{
+    while (std::queue<QueueElement>::empty()) {
+        std::unique_lock<std::mutex> lock{mMutexForNotifier};
+        mNotifier.wait(lock, [this]() -> bool { return !this->empty(); });
+    }
+
+} // Queue::wait_for_data
+
+// ----------------------------------------------------------------------
+
 WsppImplementation::WsppImplementation(Wspp& aParent, size_t aNumberOfThreads, WsppThreadMaker aThreadMaker)
     : mParent{aParent}, mThreads{aParent, aNumberOfThreads, aThreadMaker}
 {
