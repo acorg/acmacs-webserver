@@ -68,9 +68,10 @@ namespace _wspp_internal
      private:
         std::condition_variable mNotifier;
         std::mutex mMutexForNotifier;
+        std::mutex mMutexForPop;
 
-        void data_available();
-        void wait_for_data();
+          //void data_available();
+        // void wait_for_data();
 
     }; // Queue
 

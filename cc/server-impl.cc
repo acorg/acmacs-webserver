@@ -9,7 +9,8 @@ void Queue::push(std::shared_ptr<WsppWebsocketLocationHandler> aConnected, Queue
 {
     std::queue<QueueElement>::emplace(aConnected, aHandler, aMessage);
       // print_cerr(std::this_thread::get_id(), " queue::push after size: ", std::queue<QueueElement>::size());
-    data_available();
+    std::unique_lock<std::mutex> lock{mMutexForNotifier};
+    mNotifier.notify_one();
 
 } // Queue::push
 
@@ -17,7 +18,13 @@ void Queue::push(std::shared_ptr<WsppWebsocketLocationHandler> aConnected, Queue
 
 QueueElement Queue::pop()
 {
-    wait_for_data();
+    std::unique_lock<std::mutex> lock_pop{mMutexForPop};
+
+    while (std::queue<QueueElement>::empty()) {
+        std::unique_lock<std::mutex> lock_notifier{mMutexForNotifier};
+        mNotifier.wait(lock_notifier, [this]() -> bool { return !this->empty(); });
+    }
+
     // print_cerr(std::this_thread::get_id(), " queue::pop before size: ", std::queue<QueueElement>::size());
     const QueueElement result = std::queue<QueueElement>::front();
     std::queue<QueueElement>::pop();
@@ -28,23 +35,23 @@ QueueElement Queue::pop()
 
 // ----------------------------------------------------------------------
 
-void Queue::data_available()
-{
-    std::unique_lock<std::mutex> lock{mMutexForNotifier};
-    mNotifier.notify_one();
+// void Queue::data_available()
+// {
+//     std::unique_lock<std::mutex> lock{mMutexForNotifier};
+//     mNotifier.notify_one();
 
-} // Queue::data_available
+// } // Queue::data_available
 
 // ----------------------------------------------------------------------
 
-void Queue::wait_for_data()
-{
-    while (std::queue<QueueElement>::empty()) {
-        std::unique_lock<std::mutex> lock{mMutexForNotifier};
-        mNotifier.wait(lock, [this]() -> bool { return !this->empty(); });
-    }
+// void Queue::wait_for_data()
+// {
+//     while (std::queue<QueueElement>::empty()) {
+//         std::unique_lock<std::mutex> lock{mMutexForNotifier};
+//         mNotifier.wait(lock, [this]() -> bool { return !this->empty(); });
+//     }
 
-} // Queue::wait_for_data
+// } // Queue::wait_for_data
 
 // ----------------------------------------------------------------------
 
