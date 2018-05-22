@@ -37,6 +37,8 @@ Wspp::Wspp(std::string aHost, std::string aPort, size_t aNumberOfThreads, std::s
 Wspp::~Wspp()
 {
       // print_cerr("~Wspp");
+    if (log_send_receive_ != &std::cout && log_send_receive_ != &std::cerr)
+        delete log_send_receive_;
 
 } // Wspp::~Wspp
 
@@ -50,7 +52,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
     certificate_chain_file = settings.certificate_chain_file();
     private_key_file = settings.private_key_file();
     tmp_dh_file = settings.tmp_dh_file();
-    setup_logging(settings.log_access(), settings.log_error());
+    setup_logging(settings.log_access(), settings.log_error(), settings.log_send_receive());
 
     for (const auto& location: settings.locations()) {
         try {
@@ -98,7 +100,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
 
 // ----------------------------------------------------------------------
 
-void Wspp::setup_logging(std::string access_log_filename, std::string error_log_filename)
+void Wspp::setup_logging(std::string access_log_filename, std::string error_log_filename, std::string log_send_receive)
 {
     using namespace websocketpp::log;
     auto& alog = implementation().server().get_alog();
@@ -110,11 +112,12 @@ void Wspp::setup_logging(std::string access_log_filename, std::string error_log_
             alog.set_ostream(&std::cerr);
         }
         else {
-            auto* fs = new std::ofstream{access_log_filename, std::ios_base::out | std::ios_base::app};
-            if (fs && *fs)
-                alog.set_ostream(fs);
+            fs::create_directories(fs::path(access_log_filename).parent_path());
+            auto* output = new std::ofstream{access_log_filename, std::ios_base::out | std::ios_base::app};
+            if (output && *output)
+                alog.set_ostream(output);
             else
-                delete fs;
+                delete output;
         }
     }
 
@@ -139,17 +142,44 @@ void Wspp::setup_logging(std::string access_log_filename, std::string error_log_
 
     auto& elog = implementation().server().get_elog();
     if (!error_log_filename.empty()) {
-        auto* fs = new std::ofstream{error_log_filename, std::ios_base::out | std::ios_base::app};
-        if (fs && *fs)
-            elog.set_ostream(fs);
-        else
-            delete fs;
+        if (error_log_filename == "-") {
+            elog.set_ostream(&std::cout);
+        }
+        else if (error_log_filename == "=") {
+            elog.set_ostream(&std::cerr);
+        }
+        else {
+            fs::create_directories(fs::path(error_log_filename).parent_path());
+            auto* fs = new std::ofstream{error_log_filename, std::ios_base::out | std::ios_base::app};
+            if (fs && *fs)
+                elog.set_ostream(fs);
+            else
+                delete fs;
+        }
     }
     elog.clear_channels(alevel::all);
     elog.set_channels(alevel::none // ~/AD/include/websocketpp/logger/levels.hpp
                       | alevel::connect | alevel::disconnect | alevel::control | alevel::frame_header | alevel::frame_payload | alevel::message_header | alevel::message_payload | alevel::endpoint |
                       alevel::debug_handshake | alevel::debug_close | alevel::devel | alevel::app | alevel::http // Access related to HTTP requests
                       | alevel::fail);                                                                           // alevel::connect | alevel::disconnect);
+
+    if (!log_send_receive.empty()) {
+        if (log_send_receive == "-") {
+            log_send_receive_ = &std::cout;
+        }
+        else if (log_send_receive == "=") {
+            log_send_receive_ = &std::cerr;
+        }
+        else {
+            fs::create_directories(fs::path(log_send_receive).parent_path());
+            log_send_receive_ = new std::ofstream{log_send_receive, std::ios_base::out | std::ios_base::ate | std::ios_base::app};
+            if (!log_send_receive_ || !log_send_receive_) {
+                delete log_send_receive_;
+                log_send_receive_ = &std::cerr;
+                *log_send_receive_ << "WARNING: cannot open log file: " << log_send_receive << '\n';
+            }
+        }
+    }
 
 } // Wspp::setup_logging
 

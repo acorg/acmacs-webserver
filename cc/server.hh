@@ -3,6 +3,7 @@
 #include <memory>
 #include <thread>
 #include <shared_mutex>
+#include <iostream>
 
 //#include "acmacs-webserver/websocketpp-asio.hh"
 #include "websocketpp-asio.hh"
@@ -40,9 +41,10 @@ class Wspp
 
     void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
     void add_location_handler(std::shared_ptr<WsppWebsocketLocationHandler> aHandler) { mWebsocketLocationHandlers.push_back(aHandler); }
-    void setup_logging(std::string access_log_filename = std::string{}, std::string error_log_filename = std::string{});
+    void setup_logging(std::string access_log_filename = std::string{}, std::string error_log_filename = std::string{}, std::string log_send_receive = "-");
     _wspp_internal::WsppImplementation& implementation() { return *impl; }
     void stop_listening();
+    std::ostream& log_send_receive() { return *log_send_receive_; }
 
     void run();
 
@@ -60,6 +62,7 @@ class Wspp
     std::vector<std::shared_ptr<WsppWebsocketLocationHandler>> mWebsocketLocationHandlers;
     std::map<websocketpp::connection_hdl, std::shared_ptr<WsppWebsocketLocationHandler>, std::owner_less<websocketpp::connection_hdl>> mConnected;
     std::mutex mConnectedAccess;
+    std::ostream* log_send_receive_ = nullptr;
 
     void read_settings(const ServerSettings& aSettings, WsppThreadMaker aThreadMaker);
     void http_location_handle(const HttpResource& aResource, WsppHttpResponseData& aResponse);
@@ -181,6 +184,8 @@ class WsppWebsocketLocationHandler
     virtual void message(std::string aMessage, WsppThread& aThread) = 0;
       // websocket was already closed, no way to send message back
     virtual void after_close(std::string, WsppThread& /*aThread*/) {}
+
+    std::ostream& log_send_receive() { return mWspp->log_send_receive(); }
 
  private:
     Wspp* mWspp;

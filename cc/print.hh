@@ -28,14 +28,14 @@ namespace print_internal
         static std::mutex access;
 #pragma GCC diagnostic pop
         std::unique_lock<decltype(access)> lock{access};
+        os << '[';
+        print_date_time(os);
+        ((os << "] ") << ... << values);
         if (file) {
-              // ((os<< std::this_thread::get_id() << ' ' << file << ':' << line << ": ") << ... << values) << " [" << file << ':' << line << "] " << std::this_thread::get_id() << '\n';
-            (os << ... << values) << " [" << file << ':' << line << "] <" << std::this_thread::get_id() << ">\n";
+            os << " [" << file << ':' << line << "] <" << std::this_thread::get_id() << '>' << std::endl;
         }
         else {
-            os << '[';
-            print_date_time(os);
-            ((os << "] ") << ... << values) << " <" << std::this_thread::get_id() << ">\n";
+            os << " <" << std::this_thread::get_id() << '>' << std::endl;
         }
     }
 }
@@ -44,19 +44,19 @@ namespace print_internal
 #define print_cerr(...) print_internal::print_impl(std::cerr, __FILE__, __LINE__, __VA_ARGS__)
 #define print_to(to, ...) print_internal::print_impl((to), __FILE__, __LINE__, __VA_ARGS__)
 
-inline void print_send(std::string_view&& aMessage, size_t cut_message = 100)
+inline void print_send(std::ostream& os, std::string_view&& aMessage, size_t cut_message = 200)
 {
-    print_internal::print_impl(std::cout, nullptr, 0, "SEND: ", aMessage.substr(0, cut_message));
+    print_internal::print_impl(os, nullptr, 0, "SEND: ", aMessage.substr(0, cut_message));
 }
 
-inline void print_send_error(std::string_view&& aCommandId, std::string_view&& aMessage)
+inline void print_send_error(std::ostream& os, std::string_view&& aCommandId, std::string_view&& aMessage)
 {
-    print_internal::print_impl(std::cout, nullptr, 0, "ERROR: SEND: ", aCommandId, " -- ", aMessage);
+    print_internal::print_impl(os, nullptr, 0, "ERROR: SEND: ", aCommandId, " -- ", aMessage);
 }
 
-inline void print_receive(std::string_view&& aMessage, size_t cut_message = 100)
+inline void print_receive(std::ostream& os, std::string_view&& aMessage, size_t cut_message = 200)
 {
-    print_internal::print_impl(std::cout, nullptr, 0, "RECV: ", aMessage.substr(0, cut_message));
+    print_internal::print_impl(os, nullptr, 0, "RECV: ", aMessage.substr(0, cut_message));
 }
 
 // ----------------------------------------------------------------------

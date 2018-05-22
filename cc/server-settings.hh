@@ -37,6 +37,7 @@ class ServerSettings
     std::string tmp_dh_file() const { return doc_.get_or_default("tmp_dh_file", ""); }
     std::string log_access() const { return doc_.get_or_default("log_access", ""); }
     std::string log_error() const { return doc_.get_or_default("log_error", ""); }
+    std::string log_send_receive() const { return doc_.get_or_default("log_send_receive", "-"); }
 
     rjson::array locations() const { return doc_.get_or_empty_array("locations"); }
 

@@ -80,8 +80,8 @@ void WsppImplementation::listen(std::string aHost, std::string aPort)
         try {
             mServer.listen(aHost, aPort);
             if (attempt > 1)
-                std::cerr << std::endl;
-            print_cerr("https://", aHost, ':', aPort);
+                std::cout << std::endl;
+            print_cout("https://", aHost, ':', aPort);
             break;
         }
         catch (std::exception& err) {
@@ -214,7 +214,7 @@ void WsppImplementation::pop_call(WsppThread& aThread)
 
 void Threads::start()
 {
-    print_cerr("Starting ", size(), " worker threads");
+    print_cout("Starting ", size(), " worker threads");
     std::transform(this->begin(), this->end(), this->begin(), [this](const auto&) {
             // using namespace std::chrono_literals;
             // std::this_thread::sleep_for(0.2s);
