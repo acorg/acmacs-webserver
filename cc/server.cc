@@ -103,32 +103,39 @@ void Wspp::setup_logging(std::string access_log_filename, std::string error_log_
     using namespace websocketpp::log;
     auto& alog = implementation().server().get_alog();
     if (!access_log_filename.empty()) {
-        auto* fs = new std::ofstream{access_log_filename, std::ios_base::out | std::ios_base::app};
-        if (fs && *fs)
-            alog.set_ostream(fs);
-        else
-            delete fs;
+        if (access_log_filename == "-") {
+            alog.set_ostream(&std::cout);
+        }
+        else if (access_log_filename == "=") {
+            alog.set_ostream(&std::cerr);
+        }
+        else {
+            auto* fs = new std::ofstream{access_log_filename, std::ios_base::out | std::ios_base::app};
+            if (fs && *fs)
+                alog.set_ostream(fs);
+            else
+                delete fs;
+        }
     }
 
-       // remove all logging, then enable individual channels
+    // remove all logging, then enable individual channels
 
     alog.clear_channels(alevel::all);
     alog.set_channels(alevel::none // ~/AD/include/websocketpp/logger/levels.hpp
-                      | alevel::connect
-                      | alevel::disconnect
-                          // | alevel::control
-                          // | alevel::frame_header
-                          // | alevel::frame_payload
-                          // | alevel::message_header // Reserved
-                          // | alevel::message_payload // Reserved
-                          // | alevel::endpoint // Reserved
-                          // | alevel::debug_handshake
-                          // | alevel::debug_close
-                          // | alevel::devel
-                      | alevel::app // Special channel for application specific logs. Not used by the library.
-                      | alevel::http // Access related to HTTP requests
-                      | alevel::fail
-                      ); // alevel::connect | alevel::disconnect);
+                      | alevel::connect |
+                      alevel::disconnect
+                      // | alevel::control
+                      // | alevel::frame_header
+                      // | alevel::frame_payload
+                      // | alevel::message_header // Reserved
+                      // | alevel::message_payload // Reserved
+                      // | alevel::endpoint // Reserved
+                      // | alevel::debug_handshake
+                      // | alevel::debug_close
+                      // | alevel::devel
+                      | alevel::app    // Special channel for application specific logs. Not used by the library.
+                      | alevel::http   // Access related to HTTP requests
+                      | alevel::fail); // alevel::connect | alevel::disconnect);
 
     auto& elog = implementation().server().get_elog();
     if (!error_log_filename.empty()) {
@@ -140,21 +147,9 @@ void Wspp::setup_logging(std::string access_log_filename, std::string error_log_
     }
     elog.clear_channels(alevel::all);
     elog.set_channels(alevel::none // ~/AD/include/websocketpp/logger/levels.hpp
-                      | alevel::connect
-                      | alevel::disconnect
-                      | alevel::control
-                      | alevel::frame_header
-                      | alevel::frame_payload
-                      | alevel::message_header
-                      | alevel::message_payload
-                      | alevel::endpoint
-                      | alevel::debug_handshake
-                      | alevel::debug_close
-                      | alevel::devel
-                      | alevel::app
-                      | alevel::http // Access related to HTTP requests
-                      | alevel::fail
-                      ); // alevel::connect | alevel::disconnect);
+                      | alevel::connect | alevel::disconnect | alevel::control | alevel::frame_header | alevel::frame_payload | alevel::message_header | alevel::message_payload | alevel::endpoint |
+                      alevel::debug_handshake | alevel::debug_close | alevel::devel | alevel::app | alevel::http // Access related to HTTP requests
+                      | alevel::fail);                                                                           // alevel::connect | alevel::disconnect);
 
 } // Wspp::setup_logging
 
