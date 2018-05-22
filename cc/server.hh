@@ -185,7 +185,7 @@ class WsppWebsocketLocationHandler
       // websocket was already closed, no way to send message back
     virtual void after_close(std::string, WsppThread& /*aThread*/) {}
 
-    std::ostream& log_send_receive() { return mWspp->log_send_receive(); }
+    std::ostream& log_send_receive() { if (mWspp) return mWspp->log_send_receive(); else return std::cerr; }
 
  private:
     Wspp* mWspp;
