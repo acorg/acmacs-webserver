@@ -26,7 +26,8 @@ LDLIBS = \
   -L/usr/local/opt/openssl/lib $(shell pkg-config --libs libssl) \
   $(shell pkg-config --libs liblzma) \
   $(shell pkg-config --libs libcrypto) \
-  -L$(AD_LIB) -lboost_system -lpthread $(FS_LIB)
+  -L$(AD_LIB) -lboost_system -lpthread \
+  $(CXX_LIB)
 
 # ----------------------------------------------------------------------
 
