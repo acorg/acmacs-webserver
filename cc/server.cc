@@ -489,17 +489,6 @@ void WsppThread::run()
 } // WsppThread::run
 
 // ----------------------------------------------------------------------
-
-void WsppThread::initialize()
-{
-    // print_cerr("start thread");
-
-} // WsppThread::initialize
-
-// ----------------------------------------------------------------------
-
-
-// ----------------------------------------------------------------------
 /// Local Variables:
 /// eval: (if (fboundp 'eu-rename-buffer) (eu-rename-buffer))
 /// End:
