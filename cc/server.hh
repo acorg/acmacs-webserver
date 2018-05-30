@@ -87,13 +87,13 @@ class WsppThread
  protected:
     WsppThread(Wspp& aWspp) : mWspp{aWspp}, mThread{std::bind(&WsppThread::run, this)} {}
 
-    virtual void initialize();
+    virtual void initialize() {}
 
  private:
     Wspp& mWspp;
     std::thread mThread;
 
-    [[noreturn]] void run();
+    [[noreturn]] virtual void run();
 
 }; // class WsppThread
 
