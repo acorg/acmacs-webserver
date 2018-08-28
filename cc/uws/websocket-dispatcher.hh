@@ -8,7 +8,7 @@
 #include <vector>
 #include <map>
 
-#include "acmacs-base/string.hh"
+#include "acmacs-base/to-string.hh"
 #include "uws.hh"
 
 // ----------------------------------------------------------------------
@@ -263,7 +263,7 @@ class WebSocketDataBase
     virtual void disconnection(std::string aMessage) = 0; // mWs is null when this is called
     virtual void message(std::string aMessage) = 0;
 
-    inline std::string data_id() const { /* std::unique_lock<std::mutex> lock{mMutex}; */ return std::to_string(mId) + ":" + string::to_hex_string(mWs); }
+    inline std::string data_id() const { /* std::unique_lock<std::mutex> lock{mMutex}; */ return std::to_string(mId) + ":" + acmacs::to_hex_string(mWs); }
 
  protected:
     mutable std::mutex mMutex;
