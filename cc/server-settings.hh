@@ -26,7 +26,7 @@ namespace internal
 class ServerSettings
 {
  public:
-    ServerSettings(std::string aFilename) : doc_{rjson::parse_file(aFilename)} {}
+    ServerSettings(std::string aFilename) : doc_{rjson::v1::parse_file(aFilename)} {}
     virtual ~ServerSettings() = default;
 
     std::string host() const { return doc_.get_or_default("host", ""); }
@@ -39,10 +39,10 @@ class ServerSettings
     std::string log_error() const { return doc_.get_or_default("log_error", ""); }
     std::string log_send_receive() const { return doc_.get_or_default("log_send_receive", "-"); }
 
-    rjson::array locations() const { return doc_.get_or_empty_array("locations"); }
+    rjson::v1::array locations() const { return doc_.get_or_empty_array("locations"); }
 
  protected:
-    rjson::object doc_;
+    rjson::v1::object doc_;
 
 }; // class ServerSettings
 
