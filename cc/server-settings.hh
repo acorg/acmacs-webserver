@@ -26,23 +26,23 @@ namespace internal
 class ServerSettings
 {
  public:
-    ServerSettings(std::string aFilename) : doc_{rjson::v1::parse_file(aFilename)} {}
+    ServerSettings(std::string aFilename) : doc_{rjson::parse_file(aFilename)} {}
     virtual ~ServerSettings() = default;
 
-    std::string host() const { return doc_.get_or_default("host", ""); }
-    size_t port() const { return doc_.get_or_default("port", 0UL); }
-    auto number_of_threads() const { return doc_.get_or_default("number_of_threads", std::thread::hardware_concurrency()); }
-    std::string certificate_chain_file() const { return doc_.get_or_default("certificate_chain_file", ""); }
-    std::string private_key_file() const { return doc_.get_or_default("private_key_file", ""); }
-    std::string tmp_dh_file() const { return doc_.get_or_default("tmp_dh_file", ""); }
-    std::string log_access() const { return doc_.get_or_default("log_access", ""); }
-    std::string log_error() const { return doc_.get_or_default("log_error", ""); }
-    std::string log_send_receive() const { return doc_.get_or_default("log_send_receive", "-"); }
+    std::string host() const { return rjson::get_or(doc_, "host", ""); }
+    size_t port() const { return rjson::get_or(doc_, "port", 0UL); }
+    auto number_of_threads() const { return rjson::get_or(doc_, "number_of_threads", static_cast<size_t>(std::thread::hardware_concurrency())); }
+    std::string certificate_chain_file() const { return rjson::get_or(doc_, "certificate_chain_file", ""); }
+    std::string private_key_file() const { return rjson::get_or(doc_, "private_key_file", ""); }
+    std::string tmp_dh_file() const { return rjson::get_or(doc_, "tmp_dh_file", ""); }
+    std::string log_access() const { return rjson::get_or(doc_, "log_access", ""); }
+    std::string log_error() const { return rjson::get_or(doc_, "log_error", ""); }
+    std::string log_send_receive() const { return rjson::get_or(doc_, "log_send_receive", "-"); }
 
-    rjson::v1::array locations() const { return doc_.get_or_empty_array("locations"); }
+    const rjson::value& locations() const { return doc_["locations"]; }
 
  protected:
-    rjson::v1::object doc_;
+    rjson::value doc_;
 
 }; // class ServerSettings
 

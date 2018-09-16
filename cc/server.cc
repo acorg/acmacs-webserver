@@ -54,32 +54,29 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
     tmp_dh_file = settings.tmp_dh_file();
     setup_logging(settings.log_access(), settings.log_error(), settings.log_send_receive());
 
-    for (const auto& location: settings.locations()) {
+    rjson::for_each(settings.locations(), [this](const rjson::value& location) {
         try {
-            const auto loc = location.get_or_default("location", "");
-            if (!loc.empty()) {
-                const auto files = location.get_or_empty_array("files");
-                if (!files.empty()) {
-                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc, files.begin(), files.end()));
+            if (const auto& loc = rjson::get_or(location, "location", ""); !loc.empty()) {
+                if (const auto& files = location["files"]; !files.empty()) {
+                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc, rjson::as_vector<std::string>(files)));
                 }
                 else {
-                    const auto dirs = location.get_or_empty_array("dirs");
-                    if (!dirs.empty() || loc.back() != '/' || dirs[0].str().back() != '/') {
-                        for (const auto& dir: dirs) {
-                            for (auto& entry: fs::directory_iterator(dir.str())) {
+                    if (const auto& dirs = location["dirs"]; !dirs.empty() || loc.back() != '/' || static_cast<std::string_view>(dirs[0]).back() != '/') {
+                        rjson::for_each(dirs, [this,loc=static_cast<std::string>(loc)](const rjson::value& dir) {
+                            for (auto& entry : fs::directory_iterator(static_cast<std::string_view>(dir))) {
                                 auto& path = entry.path();
                                 if (exists(path)) {
                                     auto filename = path.filename();
                                     if (filename.extension() == ".gz")
                                         filename = filename.stem();
-                                      // std::cerr << loc + filename.string() << " <=  " << path.string() << std::endl;
+                                    // std::cerr << loc + filename.string() << " <=  " << path.string() << std::endl;
                                     add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc + filename.string(), std::vector<std::string>{path.string()}));
                                 }
                                 else {
                                     print_cerr("No file: ", path.string());
                                 }
                             }
-                        }
+                        });
                     }
                     else {
                         throw std::runtime_error("invalid value for \"files\" or \"dirs\"");
@@ -93,8 +90,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
         catch (std::exception& err) {
             print_cerr("Warning: invalid location entry: ", err.what());
         }
-    }
-
+    });
 
 } // Wspp::read_settings
 
