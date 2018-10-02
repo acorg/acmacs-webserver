@@ -58,7 +58,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
         try {
             if (const auto& loc = rjson::get_or(location, "location", ""); !loc.empty()) {
                 if (const auto& files = location["files"]; !files.empty()) {
-                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc, rjson::as_vector<std::string>(files)));
+                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(std::string(loc), rjson::as_vector<std::string>(files)));
                 }
                 else {
                     if (const auto& dirs = location["dirs"]; !dirs.empty() || loc.back() != '/' || static_cast<std::string_view>(dirs[0]).back() != '/') {
@@ -96,7 +96,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
 
 // ----------------------------------------------------------------------
 
-void Wspp::setup_logging(std::string access_log_filename, std::string error_log_filename, std::string log_send_receive)
+void Wspp::setup_logging(std::string_view access_log_filename, std::string_view error_log_filename, std::string_view log_send_receive)
 {
     using namespace websocketpp::log;
     auto& alog = implementation().server().get_alog();
@@ -109,7 +109,7 @@ void Wspp::setup_logging(std::string access_log_filename, std::string error_log_
         }
         else {
             fs::create_directories(fs::path(access_log_filename).parent_path());
-            auto* output = new std::ofstream{access_log_filename, std::ios_base::out | std::ios_base::app};
+            auto* output = new std::ofstream{std::string(access_log_filename), std::ios_base::out | std::ios_base::app};
             if (output && *output)
                 alog.set_ostream(output);
             else
@@ -146,7 +146,7 @@ void Wspp::setup_logging(std::string access_log_filename, std::string error_log_
         }
         else {
             fs::create_directories(fs::path(error_log_filename).parent_path());
-            auto* fs = new std::ofstream{error_log_filename, std::ios_base::out | std::ios_base::app};
+            auto* fs = new std::ofstream{std::string(error_log_filename), std::ios_base::out | std::ios_base::app};
             if (fs && *fs)
                 elog.set_ostream(fs);
             else
@@ -168,7 +168,7 @@ void Wspp::setup_logging(std::string access_log_filename, std::string error_log_
         }
         else {
             fs::create_directories(fs::path(log_send_receive).parent_path());
-            log_send_receive_ = new std::ofstream{log_send_receive, std::ios_base::out | std::ios_base::ate | std::ios_base::app};
+            log_send_receive_ = new std::ofstream{std::string(log_send_receive), std::ios_base::out | std::ios_base::ate | std::ios_base::app};
             if (!log_send_receive_ || !log_send_receive_) {
                 delete log_send_receive_;
                 log_send_receive_ = &std::cerr;

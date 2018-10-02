@@ -41,7 +41,7 @@ class Wspp
 
     void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
     void add_location_handler(std::shared_ptr<WsppWebsocketLocationHandler> aHandler) { mWebsocketLocationHandlers.push_back(aHandler); }
-    void setup_logging(std::string access_log_filename = std::string{}, std::string error_log_filename = std::string{}, std::string log_send_receive = "-");
+    void setup_logging(std::string_view access_log_filename = {}, std::string_view error_log_filename = {}, std::string_view log_send_receive = "-");
     _wspp_internal::WsppImplementation& implementation() { return *impl; }
     void stop_listening();
     std::ostream& log_send_receive() { return *log_send_receive_; }
