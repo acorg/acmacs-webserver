@@ -5,6 +5,7 @@
 
 #include "acmacs-base/stream.hh"
 #include "acmacs-base/filesystem.hh"
+#include "acmacs-base/string.hh"
 
 #include "server.hh"
 #include "server-settings.hh"
@@ -62,19 +63,25 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
                 }
                 else {
                     if (const auto& dirs = location["dirs"]; !dirs.empty() || loc.back() != '/' || static_cast<std::string_view>(dirs[0]).back() != '/') {
-                        rjson::for_each(dirs, [this,loc=static_cast<std::string>(loc)](const rjson::value& dir) {
-                            for (auto& entry : fs::directory_iterator(static_cast<std::string_view>(dir))) {
-                                auto& path = entry.path();
-                                if (exists(path)) {
-                                    auto filename = path.filename();
-                                    if (filename.extension() == ".gz")
-                                        filename = filename.stem();
-                                    // std::cerr << loc + filename.string() << " <=  " << path.string() << std::endl;
-                                    add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc + filename.string(), std::vector<std::string>{path.string()}));
+                        rjson::for_each(dirs, [this, loc = static_cast<std::string>(loc)](const rjson::value& dir) {
+                            try {
+                                // std::cerr << "DEBUG: scanning " << dir << DEBUG_LINE_FUNC << '\n';
+                                for (auto& entry : fs::directory_iterator(static_cast<std::string_view>(dir))) {
+                                    auto& path = entry.path();
+                                    if (exists(path)) {
+                                        auto filename = path.filename();
+                                        if (filename.extension() == ".gz")
+                                            filename = filename.stem();
+                                        // std::cerr << "DEBUG: add location handler for " << loc + filename.string() << " path: " << path.string() << DEBUG_LINE_FUNC << '\n';
+                                        add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc + filename.string(), std::vector<std::string>{path.string()}));
+                                    }
+                                    else {
+                                        print_cerr("No file: ", path.string());
+                                    }
                                 }
-                                else {
-                                    print_cerr("No file: ", path.string());
-                                }
+                            }
+                            catch (fs::filesystem_error& err) {
+                                throw std::runtime_error("directory " + static_cast<std::string_view>(dir) + " access failed: " + err.what());
                             }
                         });
                     }
@@ -88,7 +95,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
             }
         }
         catch (std::exception& err) {
-            print_cerr("Warning: invalid location entry: ", err.what());
+            print_cerr("Warning: invalid location entry: ", rjson::to_string(location), ": ", err.what());
         }
     });
 
