@@ -81,7 +81,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
                                 }
                             }
                             catch (fs::filesystem_error& err) {
-                                throw std::runtime_error("directory " + static_cast<std::string_view>(dir) + " access failed: " + err.what());
+                                throw std::runtime_error(string::concat("directory ", static_cast<std::string_view>(dir), " access failed: ", err.what()));
                             }
                         });
                     }
