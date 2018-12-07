@@ -20,12 +20,13 @@ ACMACS_WEBSERVER_LIB = $(DIST)/$(call shared_lib_name,$(ACMACS_WEBSERVER_LIB_NAM
 
 all: install
 
+CONFIGURE_BOOST = 1
 CONFIGURE_OPENSSL = 1
 include $(ACMACSD_ROOT)/share/Makefile.config
 
 LDLIBS = \
   $(AD_LIB)/$(call shared_lib_name,libacmacsbase,1,0) \
-  $(OPENSSL_LIBS) $(XZ_LIBS) -L$(BOOST_LIB_PATH) -lboost_system -lpthread $(CXX_LIBS)
+  $(OPENSSL_LIBS) $(XZ_LIBS) $(L_BOOST) -lboost_system -lpthread $(CXX_LIBS)
 
 # ----------------------------------------------------------------------
 
