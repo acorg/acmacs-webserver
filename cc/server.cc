@@ -62,11 +62,11 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
                     add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(std::string(loc), rjson::as_vector<std::string>(files)));
                 }
                 else {
-                    if (const auto& dirs = location["dirs"]; !dirs.empty() || loc.back() != '/' || static_cast<std::string_view>(dirs[0]).back() != '/') {
+                    if (const auto& dirs = location["dirs"]; !dirs.empty() || loc.back() != '/' || dirs[0].to_string_view().back() != '/') {
                         rjson::for_each(dirs, [this, loc = static_cast<std::string>(loc)](const rjson::value& dir) {
                             try {
                                 // std::cerr << "DEBUG: scanning " << dir << DEBUG_LINE_FUNC << '\n';
-                                for (auto& entry : fs::directory_iterator(static_cast<std::string_view>(dir))) {
+                                for (auto& entry : fs::directory_iterator(dir.to_string_view())) {
                                     auto& path = entry.path();
                                     if (exists(path)) {
                                         auto filename = path.filename();
@@ -81,7 +81,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
                                 }
                             }
                             catch (fs::filesystem_error& err) {
-                                throw std::runtime_error(string::concat("directory ", static_cast<std::string_view>(dir), " access failed: ", err.what()));
+                                throw std::runtime_error(string::concat("directory ", dir.to_string_view(), " access failed: ", err.what()));
                             }
                         });
                     }
