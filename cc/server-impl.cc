@@ -152,6 +152,9 @@ WsppImplementation::context_ptr WsppImplementation::on_tls_init(websocketpp::con
 
     }
     catch (std::exception& e) {
+        print_cerr("use_certificate_chain_file: ", mParent.certificate_chain_file);
+        print_cerr("use_private_key_file: ", mParent.private_key_file);
+        print_cerr("use_tmp_dh_file: ", mParent.tmp_dh_file);
         print_cerr("Exception in initializing TLS: ", e.what());
         throw;
     }
