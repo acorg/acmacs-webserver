@@ -95,7 +95,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
             }
         }
         catch (std::exception& err) {
-            print_cerr("Warning: invalid location entry: ", rjson::to_string(location), ": ", err.what());
+            print_cerr(fmt::format("Warning: invalid location entry: {}: {}", location, err));
         }
     });
 
