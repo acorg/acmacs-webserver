@@ -65,14 +65,14 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
                     if (const auto& dirs = location["dirs"]; !dirs.empty() || loc.back() != '/' || dirs[0].to<std::string_view>().back() != '/') {
                         rjson::for_each(dirs, [this, loc = static_cast<std::string>(loc)](const rjson::value& dir) {
                             try {
-                                // std::cerr << "DEBUG: scanning " << dir << AD_DEBUG_FILE_LINE_FUNC << '\n';
+                                // std::cerr << "DEBUG: scanning " << dir << '\n';
                                 for (auto& entry : fs::directory_iterator(dir.to<std::string_view>())) {
                                     auto& path = entry.path();
                                     if (exists(path)) {
                                         auto filename = path.filename();
                                         if (filename.extension() == ".gz")
                                             filename = filename.stem();
-                                        // std::cerr << "DEBUG: add location handler for " << loc + filename.string() << " path: " << path.string() << AD_DEBUG_FILE_LINE_FUNC << '\n';
+                                        // std::cerr << "DEBUG: add location handler for " << loc + filename.string() << " path: " << path.string() << '\n';
                                         add_location_handler(std::make_shared<WsppHttpLocationHandlerFile>(loc + filename.string(), std::vector<std::string>{path.string()}));
                                     }
                                     else {
