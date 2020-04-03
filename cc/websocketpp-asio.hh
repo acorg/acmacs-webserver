@@ -28,6 +28,7 @@
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 #pragma GCC diagnostic ignored "-Wtautological-type-limit-compare"
 #pragma GCC diagnostic ignored "-Wtautological-unsigned-enum-zero-compare"
+#pragma GCC diagnostic ignored "-Wused-but-marked-unused"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 
 #endif
