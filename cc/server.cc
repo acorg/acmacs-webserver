@@ -5,7 +5,6 @@
 
 #include "acmacs-base/stream.hh"
 #include "acmacs-base/filesystem.hh"
-#include "acmacs-base/string.hh"
 
 #include "server.hh"
 #include "server-settings.hh"
@@ -81,7 +80,7 @@ void Wspp::read_settings(const ServerSettings& settings, WsppThreadMaker aThread
                                 }
                             }
                             catch (fs::filesystem_error& err) {
-                                throw std::runtime_error(string::concat("directory ", dir.to<std::string_view>(), " access failed: ", err.what()));
+                                throw std::runtime_error{fmt::format("directory {} access failed: {}", dir.to<std::string_view>(), err)};
                             }
                         });
                     }
