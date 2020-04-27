@@ -5,7 +5,7 @@
 #include <thread>
 #include <fstream>
 
-#include "acmacs-base/rjson.hh"
+#include "acmacs-base/rjson-v2.hh"
 
 // ----------------------------------------------------------------------
 
