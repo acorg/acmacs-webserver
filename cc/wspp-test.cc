@@ -14,7 +14,7 @@
 class RootPage : public WsppHttpLocationHandler
 {
  public:
-    virtual inline bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse)
+    bool handle(const HttpResource& aResource, WsppHttpResponseData& aResponse) override
         {
 
             bool handled = false;
@@ -37,27 +37,27 @@ class RootPage : public WsppHttpLocationHandler
 class MyWS : public WsppWebsocketLocationHandler
 {
  public:
-    inline MyWS() : WsppWebsocketLocationHandler{} {}
-    inline MyWS(const MyWS& aSrc) : WsppWebsocketLocationHandler{aSrc} {}
+    MyWS() : WsppWebsocketLocationHandler{} {}
+    MyWS(const MyWS& aSrc) : WsppWebsocketLocationHandler{aSrc} {}
 
  protected:
-    virtual std::shared_ptr<WsppWebsocketLocationHandler> clone() const
+    std::shared_ptr<WsppWebsocketLocationHandler> clone() const override
         {
             return std::make_shared<MyWS>(*this);
         }
 
-    virtual inline bool use(std::string aLocation) const
+    bool use(std::string aLocation) const override
         {
             return aLocation == "/myws";
         }
 
-    virtual inline void opening(std::string, WsppThread& /*aThread*/)
+    void opening(std::string, WsppThread& /*aThread*/) override
         {
             std::cerr << std::this_thread::get_id() << " MyWS opening" << std::endl;
             send("hello");
         }
 
-    virtual inline void message(std::string aMessage, WsppThread& /*aThread*/)
+    void message(std::string aMessage, WsppThread& /*aThread*/) override
         {
             std::cerr << std::this_thread::get_id() << " MyWS message: \"" << aMessage << '"' << std::endl;
             using namespace std::chrono_literals;
@@ -66,7 +66,7 @@ class MyWS : public WsppWebsocketLocationHandler
             send("MyWS first", websocketpp::frame::opcode::binary);
         }
 
-    virtual void after_close(std::string, WsppThread& /*aThread*/)
+    void after_close(std::string, WsppThread& /*aThread*/) override
         {
             std::cout << std::this_thread::get_id() << " MyWS after_close" << std::endl;
         }

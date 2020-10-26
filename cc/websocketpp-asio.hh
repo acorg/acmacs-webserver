@@ -30,6 +30,8 @@
 #pragma GCC diagnostic ignored "-Wtautological-unsigned-enum-zero-compare"
 #pragma GCC diagnostic ignored "-Wused-but-marked-unused"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#pragma GCC diagnostic ignored "-Wsuggest-override"
+#pragma GCC diagnostic ignored "-Wsuggest-destructor-override"
 
 #endif
 
