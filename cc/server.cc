@@ -3,7 +3,6 @@
 #include <chrono>
 #include <typeinfo>
 
-#include "acmacs-base/stream.hh"
 #include "acmacs-base/filesystem.hh"
 
 #include "server.hh"
