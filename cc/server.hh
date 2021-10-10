@@ -22,7 +22,7 @@ namespace websocketpp {
 class WsppHttpResponseData;
 class WsppHttpLocationHandler;
 class WsppWebsocketLocationHandler;
-namespace _wspp_internal { class WsppImplementation; }      // defined in wspp-http.cc
+namespace wspp_internal { class WsppImplementation; }      // defined in wspp-http.cc
 class ServerSettings;
 class HttpResource;
 
@@ -42,7 +42,7 @@ class Wspp
     void add_location_handler(std::shared_ptr<WsppHttpLocationHandler> aHandler) { mHttpLocationHandlers.push_back(aHandler); }
     void add_location_handler(std::shared_ptr<WsppWebsocketLocationHandler> aHandler) { mWebsocketLocationHandlers.push_back(aHandler); }
     void setup_logging(std::string_view access_log_filename = {}, std::string_view error_log_filename = {}, std::string_view log_send_receive = "-");
-    _wspp_internal::WsppImplementation& implementation() { return *impl; }
+    wspp_internal::WsppImplementation& implementation() { return *impl; }
     void stop_listening();
     std::ostream& log_send_receive() { return *log_send_receive_; }
 
@@ -53,7 +53,7 @@ class Wspp
     class HandlerForConnectionAlreadyExists : public std::runtime_error { public: using std::runtime_error::runtime_error; };
 
  private:
-    std::unique_ptr<_wspp_internal::WsppImplementation> impl;
+    std::unique_ptr<wspp_internal::WsppImplementation> impl;
     std::string mHost, mPort;
     std::string certificate_chain_file;
     std::string private_key_file;
@@ -71,7 +71,7 @@ class Wspp
     std::shared_ptr<WsppWebsocketLocationHandler> find_connected(websocketpp::connection_hdl hdl);
     const WsppWebsocketLocationHandler& find_handler_by_location(std::string aLocation) const;
 
-    friend class _wspp_internal::WsppImplementation;
+    friend class wspp_internal::WsppImplementation;
     friend class WsppWebsocketLocationHandler;
 
 }; // class Wspp
@@ -200,7 +200,7 @@ class WsppWebsocketLocationHandler
     void on_message(websocketpp::connection_hdl hdl, websocketpp::config::asio::message_type::ptr msg);
     void on_close(websocketpp::connection_hdl hdl);
     void call_after_close(std::string aMessage, WsppThread& aThread);
-    _wspp_internal::WsppImplementation& wspp_implementation() // caller needs to lock mAccess
+    wspp_internal::WsppImplementation& wspp_implementation() // caller needs to lock mAccess
         {
             if (!mWspp || mHdl.expired())
                 throw ConnectionClosed{};
@@ -208,7 +208,7 @@ class WsppWebsocketLocationHandler
         }
 
     friend class Wspp;
-    friend class _wspp_internal::WsppImplementation;
+    friend class wspp_internal::WsppImplementation;
 
 }; // class WsppHttpLocationHandler
 

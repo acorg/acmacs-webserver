@@ -1,7 +1,7 @@
 #include "server-impl.hh"
 #include "server.hh"
 
-using namespace _wspp_internal;
+using namespace wspp_internal;
 
 // ----------------------------------------------------------------------
 

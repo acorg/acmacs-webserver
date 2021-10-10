@@ -7,6 +7,11 @@
 // #include "acmacs-base/boost-diagnostics.hh"
 
 #ifdef __clang__
+// clang 13
+#pragma GCC diagnostic ignored "-Wundef" // __cpp_impl_coroutine not defined
+#pragma GCC diagnostic ignored "-Wreserved-identifier"
+#pragma GCC diagnostic ignored "-Wextra-semi"
+#pragma GCC diagnostic ignored "-Wnull-pointer-subtraction"
 
 #pragma GCC diagnostic ignored "-Wcast-align"
 #pragma GCC diagnostic ignored "-Wcast-qual"
@@ -33,7 +38,17 @@
 #pragma GCC diagnostic ignored "-Wsuggest-override"
 #pragma GCC diagnostic ignored "-Wsuggest-destructor-override"
 
+#include <type_traits>
+
+namespace std
+{
+    template <class F, class ... A> using result_of = invoke_result<F, A ...>; // result_of removed in C++20
+}
+
+
 #endif
+
+// ----------------------------------------------------------------------
 
 #define ASIO_STANDALONE
 

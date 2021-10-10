@@ -17,7 +17,7 @@ using WsppThreadMaker = std::function<WsppThread*(Wspp&)>;
 
 // ----------------------------------------------------------------------
 
-namespace _wspp_internal
+namespace wspp_internal
 {
 
     class QueueElement
@@ -115,7 +115,7 @@ namespace _wspp_internal
 
       // ----------------------------------------------------------------------
 
-} // namespace _wspp_internal
+} // namespace wspp_internal
 
 // ----------------------------------------------------------------------
 /// Local Variables:
